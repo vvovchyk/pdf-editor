@@ -1,5 +1,6 @@
 Flask
-pymupdf
-opencv-python
-numpy
+PyMuPDF
 Pillow
+opencv-python-headless
+numpy
+gunicorn

@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>PDF Cleaner Advanced</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body class="dark">
+
+<!-- LOAD PDF -->
+<section id="load-section">
+    <input type="file" id="pdfFile" accept="application/pdf">
+    <button onclick="loadPDF()">Load PDF</button>
+
+    <label id="modeToggleLabel">
+        <input type="checkbox" id="modeToggle" checked onchange="updateMode()">
+        Edit only active page
+    </label>
+</section>
+
+<!-- NAVIGATION -->
+<section id="nav-section">
+    <button onclick="goFirst()">⏮</button>
+    <button onclick="goPrev()">◀</button>
+    <span id="pageInfo"></span>
+    <button onclick="goNext()">▶</button>
+    <button onclick="goLast()">⏭</button>
+
+    <button onclick="undo()">↶ Undo</button>
+    <button onclick="redo()">↷ Redo</button>
+    <button onclick="showBefore()">Before</button>
+    <button onclick="showAfter()">After</button>
+
+    <button onclick="zoomOut()">➖</button>
+    <span id="zoomValue">100%</span>
+    <button onclick="zoomIn()">➕</button>
+</section>
+
+<!-- MAIN LAYOUT -->
+<div id="main-layout">
+
+    <!-- LEFT SIDE -->
+    <div id="left-side">
+
+        <!-- LARGE PAGE VIEWER -->
+        <div id="viewer">
+            <div id="imageWrapper">
+                <img id="pageImage">
+                <div id="selectionBox"></div>
+            </div>
+        </div>
+
+        <!-- THUMBNAILS -->
+        <div id="thumbnails"></div>
+
+        <!-- SAVE / DISCARD -->
+        <div id="save-section">
+            <button onclick="savePDF()">💾 Save PDF</button>
+            <button onclick="discardPDF()">❌ Discard Changes</button>
+        </div>
+    </div>
+
+    <!-- RIGHT SIDE: CONTROLS -->
+    <aside id="controls">
+
+        <h3>Adjustments</h3>
+
+        <div class="slider-row">
+            <label>Contrast</label>
+            <input type="range" min="0.5" max="2.5" step="0.1" value="1"
+                   oninput="updateEnhancement('contrast', this.value)">
+        </div>
+
+        <div class="slider-row">
+            <label>Brightness</label>
+            <input type="range" min="0.5" max="2.0" step="0.1" value="1"
+                   oninput="updateEnhancement('brightness', this.value)">
+        </div>
+
+        <div class="slider-row">
+            <label>Sharpness</label>
+            <input type="range" min="0" max="3" step="0.1" value="1"
+                   oninput="updateEnhancement('sharpness', this.value)">
+        </div>
+
+        <div class="slider-row">
+            <label>Noise</label>
+            <input type="range" min="0" max="5" step="1" value="0"
+                   oninput="updateEnhancement('denoise', this.value)">
+        </div>
+
+        <h3>Auto Tools</h3>
+        <button onclick="applyAuto('auto')">✨ Auto Enhance</button>
+        <button onclick="applyAuto('remove_bg')">🧹 Remove Background</button>
+        <button onclick="applyAuto('deskew')">📐 Deskew Page</button>
+
+        <h3>Crop & Selection</h3>
+        <button id="cropBtn" onclick="startCrop()">✂ Crop</button>
+        <button id="selectBtn" onclick="startSelection()">Select Area</button>
+        <button id="enhanceAreaBtn" onclick="applySelectionEnhance()">Enhance Selected Area</button>
+        <button id="clearAreaBtn" onclick="clearSelectedArea()">Clear Selected Area</button>
+
+        <h3>Rotate</h3>
+        <button onclick="rotateLeft()">⟲ Rotate Left</button>
+        <button onclick="rotateRight()">⟳ Rotate Right</button>
+
+        <h3>Compression</h3>
+        <div class="slider-row">
+            <label>Quality</label>
+            <input type="range" id="compressSlider" min="10" max="95" step="5" value="80">
+        </div>
+
+        <h3>History</h3>
+        <div id="historyPanel"></div>
+
+        <h3>Batch</h3>
+        <button onclick="applyToAll()">Repeat Last Action</button>
+
+    </aside>
+</div>
+
+<script src="/static/script.js"></script>
+</body>
+</html>

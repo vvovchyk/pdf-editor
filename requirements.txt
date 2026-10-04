@@ -1,0 +1,5 @@
+Flask
+pymupdf
+opencv-python
+numpy
+Pillow

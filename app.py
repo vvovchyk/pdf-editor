@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, jsonify, send_file
-import fitz
+import pymupdf
 import io
 import base64
 from PIL import Image, ImageEnhance, ImageFilter
@@ -38,25 +38,24 @@ def cv_to_pil(img):
 
 @app.route("/load_pdf", methods=["POST"])
 def load_pdf():
-    global ORIGINAL_PAGES, EDITED_PAGES, UNDO_STACK, REDO_STACK
-
     pdf_file = request.files["pdf"]
-    doc = fitz.open(stream=pdf_file.read(), filetype="pdf")
+    doc = pymupdf.open(stream=pdf_file.read(), filetype="pdf")
 
-    ORIGINAL_PAGES = []
-    EDITED_PAGES = []
-    UNDO_STACK = []
-    REDO_STACK = []
+    ORIGINAL_PAGES.clear()
+    EDITED_PAGES.clear()
+    UNDO_STACK.clear()
+    REDO_STACK.clear()
 
     for i in range(len(doc)):
         page = doc.load_page(i)
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+        pix = page.get_pixmap(matrix=pymupdf.Matrix(2, 2))
         img = Image.open(io.BytesIO(pix.pil_tobytes(format="PNG")))
         b64 = image_to_b64(img)
         ORIGINAL_PAGES.append(b64)
         EDITED_PAGES.append(b64)
 
     return jsonify({"pages": ORIGINAL_PAGES})
+
 
 
 # ========================= UNDO / REDO =========================
@@ -268,35 +267,46 @@ def save_pdf():
     pages_b64 = data["pages"]
     quality = int(data["quality"])
 
-    new_pdf = fitz.open()
+    # створюємо новий PDF
+    new_pdf = pymupdf.open()
 
     for b64 in pages_b64:
+        # декодуємо зображення
         img_bytes = base64.b64decode(b64)
-        img = Image.open(io.BytesIO(img_bytes))
+        img = Image.open(io.BytesIO(img_bytes)).convert("RGB")
 
+        # стискаємо JPEG
         buf = io.BytesIO()
         img.save(buf, format="JPEG", quality=quality)
         jpeg_bytes = buf.getvalue()
 
-        rect = fitz.Rect(0, 0, img.width, img.height)
+        # створюємо сторінку PDF
+        rect = pymupdf.Rect(0, 0, img.width, img.height)
         page = new_pdf.new_page(width=img.width, height=img.height)
+
+        # вставляємо зображення
         page.insert_image(rect, stream=jpeg_bytes)
 
+    # отримуємо PDF у байтах
     pdf_bytes = new_pdf.tobytes()
 
+    # розрахунок розмірів
     original_size = sum(len(base64.b64decode(p)) for p in pages_b64)
     final_size = len(pdf_bytes)
 
+    # відправляємо PDF
     response = send_file(
         io.BytesIO(pdf_bytes),
         mimetype="application/pdf",
         download_name="cleaned.pdf"
     )
 
+    # додаємо метадані
     response.headers["X-Original-Size"] = str(original_size)
     response.headers["X-Final-Size"] = str(final_size)
 
     return response
+
 
 
 # ========================= INDEX =========================

@@ -1,144 +1,69 @@
-body {
-    margin: 0;
-    font-family: system-ui, sans-serif;
-    background: #111;
+body.dark {
+    background: #222;
     color: #eee;
+    font-family: Arial, sans-serif;
 }
 
-body.light {
-    background: #f5f5f5;
-    color: #222;
+#load-section {
+    padding: 10px;
+}
+
+#nav-section {
+    padding: 10px;
+}
+
+#main-layout {
+    display: flex;
+    gap: 20px;
+    padding: 20px;
+}
+
+#viewer {
+    border: 1px solid #444;
+    padding: 10px;
+    background: #111;
+}
+
+#pageImage {
+    max-width: 100%;
+}
+
+.page-thumb {
+    width: 150px;
+    margin: 5px;
+    border: 2px solid transparent;
+    cursor: pointer;
+}
+
+.page-thumb.active {
+    border-color: #00aaff;
+}
+
+#thumbnails {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+#controls {
+    width: 300px;
+    background: #111;
+    padding: 20px;
+    border: 1px solid #444;
+}
+
+.slider-row {
+    margin-bottom: 15px;
 }
 
 button {
     background: #333;
     color: #eee;
     border: 1px solid #555;
-    border-radius: 4px;
-    padding: 6px 10px;
+    padding: 8px 12px;
     cursor: pointer;
 }
 
-button:hover:not(:disabled) {
+button:hover {
     background: #444;
-}
-
-button:disabled {
-    opacity: 0.4;
-}
-
-#load-section,
-#nav-section {
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    padding: 10px 14px;
-    background: #1a1a1a;
-    border-bottom: 1px solid #333;
-}
-
-#nav-section {
-    background: #222;
-}
-
-#main-layout {
-    display: flex;
-    height: calc(100vh - 160px);
-}
-
-#left-side {
-    flex: 2;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    padding: 10px;
-}
-
-#viewer {
-    height: 70vh;
-    overflow-y: auto;
-    background: #000;
-    border: 1px solid #333;
-    border-radius: 6px;
-    padding: 10px;
-}
-
-#imageWrapper {
-    position: relative;
-    width: 100%;
-    display: flex;
-    justify-content: center;
-}
-
-#pageImage {
-    max-width: 100%;
-    height: auto;
-    transform-origin: center center;
-}
-
-#selectionBox {
-    position: absolute;
-    border: 2px dashed #00ff00;
-    background: rgba(0, 255, 0, 0.1);
-    display: none;
-    pointer-events: none;
-}
-
-#thumbnails {
-    display: flex;
-    gap: 10px;
-    padding: 10px;
-    overflow-x: auto;
-    background: #1a1a1a;
-    border: 1px solid #333;
-    border-radius: 6px;
-}
-
-.thumb-wrapper {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 4px;
-}
-
-.thumbnail {
-    width: 90px;
-    height: 130px;
-    border: 2px solid #555;
-    cursor: pointer;
-    object-fit: cover;
-}
-
-.thumbnail.active {
-    border-color: #00ff00;
-}
-
-#save-section {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-}
-
-#controls {
-    flex: 1;
-    padding: 12px;
-    background: #181818;
-    border-left: 1px solid #333;
-    overflow-y: auto;
-}
-
-.slider-row {
-    display: grid;
-    grid-template-columns: 90px 1fr;
-    gap: 10px;
-    margin-bottom: 10px;
-}
-
-#historyPanel {
-    max-height: 200px;
-    overflow-y: auto;
-    border: 1px solid #333;
-    padding: 6px;
-    border-radius: 4px;
-    background: #121212;
 }

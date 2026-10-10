@@ -32,11 +32,10 @@ function renderPages() {
         img.src = "data:image/jpeg;base64," + b64;
         img.classList.add("page-thumb");
 
-        // ACTIVE LOGIC
         if (document.getElementById("modeToggle").checked) {
             if (index === currentPage) img.classList.add("active");
         } else {
-            img.classList.add("active"); // ALL ACTIVE
+            img.classList.add("active");
         }
 
         img.addEventListener("click", () => {
@@ -68,11 +67,10 @@ function updateActiveState() {
             else t.classList.remove("active");
         });
     } else {
-        thumbs.forEach(t => t.classList.add("active")); // ALL ACTIVE
+        thumbs.forEach(t => t.classList.add("active"));
     }
 }
 
-// MODE TOGGLE
 document.getElementById("modeToggle").addEventListener("change", () => {
     updateActiveState();
 });

@@ -5,6 +5,8 @@ import base64
 from PIL import Image, ImageEnhance, ImageFilter
 import numpy as np
 import cv2
+from pdf_processor import process_pdf
+
 
 app = Flask(__name__)
 

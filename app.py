@@ -9,6 +9,7 @@ from pdf_processor import process_pdf
 
 
 app = Flask(__name__)
+app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 
 # Instead of storing base64 strings, store PIL images (much lighter)
 ORIGINAL_PAGES = []

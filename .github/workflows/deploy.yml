@@ -4,7 +4,6 @@ on:
   push:
     branches:
       - main
-      - optimized
 
 jobs:
   deploy:
@@ -13,6 +12,19 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run tests
+        run: pytest
 
       - name: Install SSH key
         uses: webfactory/ssh-agent@v0.7.0

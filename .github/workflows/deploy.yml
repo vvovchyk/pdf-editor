@@ -34,7 +34,7 @@ jobs:
       - name: Deploy to VPS
         run: |
           ssh -o StrictHostKeyChecking=no ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            cd ${{ secrets.SSH_PATH }} &&
+            cd /var/www/pdfcleaner &&
             git pull &&
             systemctl restart pdfcleaner
           "

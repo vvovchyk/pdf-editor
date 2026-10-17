@@ -46,6 +46,13 @@ def push_undo(page):
         UNDO_STACK[page].pop(0)
 
     REDO_STACK[page].clear()
+    
+def get_page(page):
+    return EDITED_PAGES[page]
+
+
+def set_page(page, img):
+    EDITED_PAGES[page] = img
 
 # ========================= LOAD PDF =========================
 
@@ -138,7 +145,7 @@ def enhance_page(page, mode, value):
 
     push_undo(page)
 
-    img = EDITED_PAGES[page]
+    img = get_page(page)
     value = float(value)
 
     if mode == "contrast":
@@ -163,7 +170,7 @@ def enhance_page(page, mode, value):
     elif mode == "deskew":
         img = ImageProcessor.deskew(img)
 
-    EDITED_PAGES[page] = img
+    set_page(page, img)
     return jsonify({"preview": pil_to_b64(img)})
 
 
@@ -172,14 +179,14 @@ def enhance_page(page, mode, value):
 @app.route("/rotate/<int:page>/<string:direction>", methods=["POST"])
 def rotate_page(page, direction):
 
-    img = EDITED_PAGES[page]
+    img = get_page(page)
 
     img = ImageProcessor.rotate(
         img,
         direction
     )
 
-    EDITED_PAGES[page] = img
+    set_page(page, img)
 
     return jsonify(
         {"preview": pil_to_b64(img)}
@@ -203,7 +210,7 @@ def crop_page():
 
     push_undo(page)
 
-    img = EDITED_PAGES[page]
+    img = get_page(page)
 
     cropped = ImageProcessor.crop(
         img,
@@ -232,7 +239,7 @@ def selection_enhance():
     init_page_history(page)
     push_undo(page)
 
-    img = EDITED_PAGES[page]
+    img = get_page(page)
 
     img = ImageProcessor.selection_enhance(
         img,
@@ -240,7 +247,7 @@ def selection_enhance():
         end
     )
 
-    EDITED_PAGES[page] = img
+    set_page(page, img)
 
     return jsonify({
         "preview": pil_to_b64(img)
@@ -262,7 +269,7 @@ def clear_area():
     init_page_history(page)
     push_undo(page)
 
-    img = EDITED_PAGES[page]
+    img = get_page(page)
     cv = pil_to_cv(img)
 
     x1 = int(start["x"])
@@ -273,7 +280,7 @@ def clear_area():
     cv[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)] = (255, 255, 255)
 
     img = cv_to_pil(cv)
-    EDITED_PAGES[page] = img
+    set_page(page, img)
 
     return jsonify({"preview": pil_to_b64(img)})
 

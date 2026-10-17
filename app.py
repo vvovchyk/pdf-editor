@@ -2,11 +2,6 @@ from flask import Flask, render_template, request, jsonify, send_file
 import pymupdf
 import io
 
-from PIL import (
-    Image,
-    ImageEnhance,
-    ImageFilter
-)
 from utils.converters import (
     pil_to_b64,
     b64_to_pil,
@@ -101,17 +96,17 @@ def enhance_page(page, mode, value):
         img = ImageProcessor.contrast(img, value)
 
     elif mode == "brightness":
-        img = ImageEnhance.brightness(img, value)
+        img = ImageProcessor.brightness(img, value)
 
     elif mode == "sharpness":
-        img = ImageEnhance.sharpness(img, value)
+        img = ImageProcessor.sharpness(img, value)
 
     elif mode == "denoise":
         if value > 0:
-            img = ImageEnhance.denoise(img, value)
+            img = ImageProcessor.denoise(img, value)
 
     elif mode == "auto":
-        img = ImageEnhance.auto(img)
+        img = ImageProcessor.auto(img)
 
     elif mode == "remove_bg":
         img = ImageProcessor.remove_bg(img)

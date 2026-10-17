@@ -20,7 +20,14 @@ class ImageProcessor:
 
     @staticmethod
     def rotate(img, direction):
+
+        if direction == "left":
+            return img.rotate(
+                90,
+                expand=True
+            )
+
         return img.rotate(
-            90 if direction == "left" else -90,
+            -90,
             expand=True
         )

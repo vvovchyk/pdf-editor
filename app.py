@@ -21,6 +21,11 @@ app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 ORIGINAL_PAGES = []
 EDITED_PAGES = []
 
+PAGE_STORE = {
+    "original": [],
+    "edited": []
+}
+
 # Store only single-page snapshots for undo/redo
 UNDO_STACK = {}
 REDO_STACK = {}
@@ -54,6 +59,12 @@ def get_page(page):
 def set_page(page, img):
     EDITED_PAGES[page] = img
 
+def get_original_pages():
+    return PAGE_STORE["original"]
+
+
+def get_edited_pages():
+    return PAGE_STORE["edited"]
 # ========================= LOAD PDF =========================
 
 @app.route("/load_pdf", methods=["POST"])
@@ -66,14 +77,14 @@ def load_pdf():
     pages = PdfService.load_pdf(pdf_file)
 
     # Reset editor state
-    ORIGINAL_PAGES.clear()
-    EDITED_PAGES.clear()
+    get_original_pages().clear()
+    get_edited_pages().clear()
     UNDO_STACK.clear()
     REDO_STACK.clear()
 
     for page in pages:
-        ORIGINAL_PAGES.append(page)
-        EDITED_PAGES.append(page.copy())
+        get_original_pages().append(page)
+        get_edited_pages().append(page.copy())
 
     pages_b64 = [
         pil_to_b64(img)

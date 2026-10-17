@@ -20,8 +20,16 @@ ORIGINAL_PAGES = []
 EDITED_PAGES = []
 
 # Store only single-page snapshots for undo/redo
-UNDO_STACK = []
-REDO_STACK = []
+UNDO_STACK = {}
+REDO_STACK = {}
+
+def init_page_history(page):
+
+    if page not in UNDO_STACK:
+        UNDO_STACK[page] = []
+
+    if page not in REDO_STACK:
+        REDO_STACK[page] = []
 
 # ========================= LOAD PDF =========================
 
@@ -56,28 +64,52 @@ def load_pdf():
 
 @app.route("/undo/<int:page>", methods=["POST"])
 def undo(page):
-    global EDITED_PAGES, UNDO_STACK, REDO_STACK
 
-    if not UNDO_STACK:
-        return jsonify({"preview": pil_to_b64(EDITED_PAGES[page])})
+    init_page_history(page)
 
-    REDO_STACK.append(EDITED_PAGES[page].copy())
-    EDITED_PAGES[page] = UNDO_STACK.pop()
+    if not UNDO_STACK[page\]:
+        return jsonify({
+            "preview": pil_to_b64(
+                EDITED_PAGES[page]
+            )
+        })
 
-    return jsonify({"preview": pil_to_b64(EDITED_PAGES[page])})
+    REDO_STACK[page].append(
+        EDITED_PAGES[page].copy()
+    )
+
+    EDITED_PAGES[page] = UNDO_STACK[page].pop()
+
+    return jsonify({
+        "preview": pil_to_b64(
+            EDITED_PAGES[page]
+        )
+    })
 
 
 @app.route("/redo/<int:page>", methods=["POST"])
 def redo(page):
-    global EDITED_PAGES, UNDO_STACK, REDO_STACK
 
-    if not REDO_STACK:
-        return jsonify({"preview": pil_to_b64(EDITED_PAGES[page])})
+    init_page_history(page)
 
-    UNDO_STACK.append(EDITED_PAGES[page].copy())
-    EDITED_PAGES[page] = REDO_STACK.pop()
+    if not REDO_STACK[page\]:
+        return jsonify({
+            "preview": pil_to_b64(
+                EDITED_PAGES[page]
+            )
+        })
 
-    return jsonify({"preview": pil_to_b64(EDITED_PAGES[page])})
+    UNDO_STACK[page].append(
+        EDITED_PAGES[page].copy()
+    )
+
+    EDITED_PAGES[page] = REDO_STACK[page].pop()
+
+    return jsonify({
+        "preview": pil_to_b64(
+            EDITED_PAGES[page]
+        )
+    })
 
 
 # ========================= ENHANCEMENTS =========================
@@ -86,8 +118,13 @@ def redo(page):
 def enhance_page(page, mode, value):
     global EDITED_PAGES, UNDO_STACK, REDO_STACK
 
-    UNDO_STACK.append(EDITED_PAGES[page].copy())
-    REDO_STACK.clear()
+    init_page_history(page)
+
+    UNDO_STACK[page].append(
+        EDITED_PAGES[page].copy()
+    )
+
+    REDO_STACK[page].clear()
 
     img = EDITED_PAGES[page]
     value = float(value)
@@ -147,9 +184,16 @@ def crop_page():
     page = data["page"]
     start = data["start"]
     end = data["end"]
+    
+    
+    # Stack for later use in undo/redo
+    init_page_history(page)
 
-    UNDO_STACK.append(EDITED_PAGES[page].copy())
-    REDO_STACK.clear()
+    UNDO_STACK[page].append(
+        EDITED_PAGES[page].copy()
+    )
+
+    REDO_STACK[page].clear()
 
     img = EDITED_PAGES[page]
 
@@ -176,9 +220,11 @@ def selection_enhance():
     page = data["page"]
     start = data["start"]
     end = data["end"]
+    # Stack for later use in undo/redo
+    init_page_history(page)
 
-    UNDO_STACK.append(EDITED_PAGES[page].copy())
-    REDO_STACK.clear()
+    UNDO_STACK[page].append(EDITED_PAGES[page].copy())
+    REDO_STACK[page].clear()
 
     img = EDITED_PAGES[page]
 
@@ -206,8 +252,11 @@ def clear_area():
     start = data["start"]
     end = data["end"]
 
-    UNDO_STACK.append(EDITED_PAGES[page].copy())
-    REDO_STACK.clear()
+    # Stack for later use in undo/redo
+    init_page_history(page)
+
+    UNDO_STACK[page].append(EDITED_PAGES[page].copy())
+    REDO_STACK[page].clear()
 
     img = EDITED_PAGES[page]
     cv = pil_to_cv(img)

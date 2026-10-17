@@ -12,6 +12,8 @@ from utils.converters import (
 from services.pdf_service import PdfService
 from services.image_service import ImageProcessor
 
+MAX_HISTORY = 20
+
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 
@@ -23,6 +25,7 @@ EDITED_PAGES = []
 UNDO_STACK = {}
 REDO_STACK = {}
 
+# Helper functions
 def init_page_history(page):
 
     if page not in UNDO_STACK:
@@ -30,6 +33,19 @@ def init_page_history(page):
 
     if page not in REDO_STACK:
         REDO_STACK[page] = []
+
+def push_undo(page):
+
+    init_page_history(page)
+
+    UNDO_STACK[page].append(
+        EDITED_PAGES[page].copy()
+    )
+
+    if len(UNDO_STACK[page]) > MAX_HISTORY:
+        UNDO_STACK[page].pop(0)
+
+    REDO_STACK[page].clear()
 
 # ========================= LOAD PDF =========================
 
@@ -120,11 +136,7 @@ def enhance_page(page, mode, value):
 
     init_page_history(page)
 
-    UNDO_STACK[page].append(
-        EDITED_PAGES[page].copy()
-    )
-
-    REDO_STACK[page].clear()
+    push_undo(page)
 
     img = EDITED_PAGES[page]
     value = float(value)
@@ -189,11 +201,7 @@ def crop_page():
     # Stack for later use in undo/redo
     init_page_history(page)
 
-    UNDO_STACK[page].append(
-        EDITED_PAGES[page].copy()
-    )
-
-    REDO_STACK[page].clear()
+    push_undo(page)
 
     img = EDITED_PAGES[page]
 
@@ -222,9 +230,7 @@ def selection_enhance():
     end = data["end"]
     # Stack for later use in undo/redo
     init_page_history(page)
-
-    UNDO_STACK[page].append(EDITED_PAGES[page].copy())
-    REDO_STACK[page].clear()
+    push_undo(page)
 
     img = EDITED_PAGES[page]
 
@@ -254,9 +260,7 @@ def clear_area():
 
     # Stack for later use in undo/redo
     init_page_history(page)
-
-    UNDO_STACK[page].append(EDITED_PAGES[page].copy())
-    REDO_STACK[page].clear()
+    push_undo(page)
 
     img = EDITED_PAGES[page]
     cv = pil_to_cv(img)

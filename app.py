@@ -177,16 +177,17 @@ def crop_page():
 
     img = EDITED_PAGES[page]
 
-    x1 = int(start["x"])
-    y1 = int(start["y"])
-    x2 = int(end["x"])
-    y2 = int(end["y"])
-
-    crop_box = (min(x1, x2), min(y1, y2), max(x1, x2), max(y1, y2))
-    cropped = img.crop(crop_box)
+    cropped = ImageProcessor.crop(
+        img,
+        start,
+        end
+    )
 
     EDITED_PAGES[page] = cropped
-    return jsonify({"preview": pil_to_b64(cropped)})
+
+    return jsonify({
+        "preview": pil_to_b64(cropped)
+    })
 
 
 # ========================= SELECTION ENHANCE =========================

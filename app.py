@@ -65,6 +65,23 @@ def get_original_pages():
 
 def get_edited_pages():
     return PAGE_STORE["edited"]
+
+# прибери прямий доступ до PAGE_STORE 
+def get_original_page(page):
+    return PAGE_STORE["original"][page]
+
+
+def get_page(page):
+    return PAGE_STORE["edited"][page]
+
+
+def set_page(page, img):
+    PAGE_STORE["edited"][page] = img
+
+
+def add_pages(original, edited):
+    PAGE_STORE["original"].append(original)
+    PAGE_STORE["edited"].append(edited)
 # ========================= LOAD PDF =========================
 
 @app.route("/load_pdf", methods=["POST"])

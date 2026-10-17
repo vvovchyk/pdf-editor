@@ -13,8 +13,6 @@ from utils.converters import (
     pil_to_cv,
     cv_to_pil
 )
-import numpy as np
-import cv2
 
 from services.pdf_service import PdfService
 from services.image_service import ImageProcessor
@@ -188,21 +186,18 @@ def selection_enhance():
     REDO_STACK.clear()
 
     img = EDITED_PAGES[page]
-    cv = pil_to_cv(img)
 
-    x1 = int(start["x"])
-    y1 = int(start["y"])
-    x2 = int(end["x"])
-    y2 = int(end["y"])
+    img = ImageProcessor.selection_enhance(
+        img,
+        start,
+        end
+    )
 
-    region = cv[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)]
-    region = cv2.detailEnhance(region, sigma_s=10, sigma_r=0.15)
-    cv[min(y1, y2):max(y1, y2), min(x1, x2):max(x1, x2)] = region
-
-    img = cv_to_pil(cv)
     EDITED_PAGES[page] = img
 
-    return jsonify({"preview": pil_to_b64(img)})
+    return jsonify({
+        "preview": pil_to_b64(img)
+    })
 
 
 # ========================= CLEAR AREA =========================

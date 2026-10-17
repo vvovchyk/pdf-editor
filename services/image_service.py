@@ -103,3 +103,53 @@ class ImageProcessor:
         cv[thresh == 255] = (255, 255, 255)
 
         return cv_to_pil(cv)
+        
+        
+    @staticmethod
+    def clear_area(img, start, end):
+
+        cv = pil_to_cv(img)
+
+        x1 = int(start["x"])
+        y1 = int(start["y"])
+
+        x2 = int(end["x"])
+        y2 = int(end["y"])
+
+        cv[
+            min(y1, y2):max(y1, y2),
+            min(x1, x2):max(x1, x2)
+        ] = (255, 255, 255)
+
+        return cv_to_pil(cv)
+    
+    @staticmethod
+    def selection_enhance(img, start, end):
+
+        cv = pil_to_cv(img)
+
+        x1 = int(start["x"])
+        y1 = int(start["y"])
+
+        x2 = int(end["x"])
+        y2 = int(end["y"])
+
+        region = cv[
+            min(y1, y2):max(y1, y2),
+            min(x1, x2):max(x1, x2)
+        ]
+
+        region = cv2.detailEnhance(
+            region,
+            sigma_s=10,
+            sigma_r=0.15
+        )
+
+        cv[
+            min(y1, y2):max(y1, y2),
+            min(x1, x2):max(x1, x2)
+        ] = region
+
+        return cv_to_pil(cv)
+        
+        

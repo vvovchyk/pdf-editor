@@ -67,7 +67,7 @@ def undo(page):
 
     init_page_history(page)
 
-    if not UNDO_STACK[page\]:
+    if not UNDO_STACK[page]:
         return jsonify({
             "preview": pil_to_b64(
                 EDITED_PAGES[page]
@@ -92,7 +92,7 @@ def redo(page):
 
     init_page_history(page)
 
-    if not REDO_STACK[page\]:
+    if not REDO_STACK[page]:
         return jsonify({
             "preview": pil_to_b64(
                 EDITED_PAGES[page]

@@ -17,6 +17,7 @@ import numpy as np
 import cv2
 
 from services.pdf_service import PdfService
+from services.image_service import ImageProcessor
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
@@ -143,7 +144,7 @@ def enhance_page(page, mode, value):
 
 # ========================= ROTATE =========================
 
-@app.route("/rotate/<int:page>/<string:direction>")
+@app.route("/rotate/<int:page>/<string:direction>", methods=["POST"])
 def rotate_page(page, direction):
 
     img = EDITED_PAGES[page]

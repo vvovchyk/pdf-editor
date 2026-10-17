@@ -22,12 +22,6 @@ class ImageProcessor:
     def rotate(img, direction):
 
         if direction == "left":
-            return img.rotate(
-                90,
-                expand=True
-            )
+            return img.rotate(90, expand=True)
 
-        return img.rotate(
-            -90,
-            expand=True
-        )
+        return img.rotate(-90, expand=True)

@@ -116,25 +116,10 @@ def enhance_page(page, mode, value):
         img = ImageEnhance.auto(img)
 
     elif mode == "remove_bg":
-        cv = pil_to_cv(img)
-        gray = cv2.cvtColor(cv, cv2.COLOR_BGR2GRAY)
-        _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
-        cv[thresh == 255] = (255, 255, 255)
-        img = cv_to_pil(cv)
+        img = ImageProcessor.remove_bg(img)
 
     elif mode == "deskew":
-        cv = pil_to_cv(img)
-        gray = cv2.cvtColor(cv, cv2.COLOR_BGR2GRAY)
-        coords = np.column_stack(np.where(gray < 200))
-        angle = cv2.minAreaRect(coords)[-1]
-        if angle < -45:
-            angle = -(90 + angle)
-        else:
-            angle = -angle
-        (h, w) = cv.shape[:2]
-        M = cv2.getRotationMatrix2D((w // 2, h // 2), angle, 1.0)
-        rotated = cv2.warpAffine(cv, M, (w, h), flags=cv2.INTER_LINEAR)
-        img = cv_to_pil(rotated)
+        img = ImageProcessor.deskew(img)
 
     EDITED_PAGES[page] = img
     return jsonify({"preview": pil_to_b64(img)})

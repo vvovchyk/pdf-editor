@@ -54,3 +54,52 @@ class ImageProcessor:
         )
 
         return img
+        
+    @staticmethod
+    def deskew(img):
+
+        cv = pil_to_cv(img)
+
+        gray = cv2.cvtColor(cv, cv2.COLOR_BGR2GRAY)
+
+        coords = np.column_stack(
+            np.where(gray < 200)
+        )
+
+        angle = cv2.minAreaRect(coords)[-1]
+
+        if angle < -45:
+            angle = -(90 + angle)
+        else:
+            angle = -angle
+
+        h, w = cv.shape[:2]
+
+        M = cv2.getRotationMatrix2D(
+            (w // 2, h // 2),
+            angle,
+            1.0
+        )
+
+        rotated = cv2.warpAffine(
+            cv,
+            M,
+            (w, h),
+            flags=cv2.INTER_LINEAR
+        )
+
+        return cv_to_pil(rotated)
+    
+    @staticmethod
+    def remove_bg(img):
+        """Remove light background from scanned page."""
+
+        cv = pil_to_cv(img)
+
+        gray = cv2.cvtColor(cv, cv2.COLOR_BGR2GRAY)
+
+        _, thresh = cv2.threshold(gray, 200, 255, cv2.THRESH_BINARY)
+
+        cv[thresh == 255] = (255, 255, 255)
+
+        return cv_to_pil(cv)

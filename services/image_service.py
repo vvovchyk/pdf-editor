@@ -43,3 +43,14 @@ class ImageProcessor:
         )
 
         return img.crop(crop_box)
+        
+    @staticmethod
+    def auto(img):
+        img = ImageEnhance.Contrast(img).enhance(1.4)
+        img = ImageEnhance.Sharpness(img).enhance(1.6)
+
+        img = img.filter(
+            ImageFilter.MedianFilter(size=3)
+        )
+
+        return img

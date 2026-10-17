@@ -100,22 +100,20 @@ def enhance_page(page, mode, value):
     value = float(value)
 
     if mode == "contrast":
-        img = ImageEnhance.Contrast(img).enhance(value)
+        img = ImageProcessor.contrast(img, value)
 
     elif mode == "brightness":
-        img = ImageEnhance.Brightness(img).enhance(value)
+        img = ImageEnhance.brightness(img, value)
 
     elif mode == "sharpness":
-        img = ImageEnhance.Sharpness(img).enhance(value)
+        img = ImageEnhance.sharpness(img, value)
 
     elif mode == "denoise":
         if value > 0:
-            img = img.filter(ImageFilter.MedianFilter(size=int(value)))
+            img = ImageEnhance.denoise(img, value)
 
     elif mode == "auto":
-        img = ImageEnhance.Contrast(img).enhance(1.4)
-        img = ImageEnhance.Sharpness(img).enhance(1.6)
-        img = img.filter(ImageFilter.MedianFilter(size=3))
+        img = ImageEnhance.auto(img)
 
     elif mode == "remove_bg":
         cv = pil_to_cv(img)

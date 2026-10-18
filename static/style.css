@@ -45,8 +45,11 @@ body.dark {
 #selectionBox {
     position: absolute;
     z-index: 1;
-    border: 1px dashed #ffdc64;
-    background: rgb(255 220 100 / 18%);
+    box-sizing: border-box;
+    border: 2px solid #ff3b30;
+    outline: 1px solid #fff;
+    box-shadow: 0 0 0 3px #111;
+    background: rgb(255 59 48 / 16%);
     pointer-events: none;
 }
 

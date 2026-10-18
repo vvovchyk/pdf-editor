@@ -17,10 +17,6 @@ MAX_HISTORY = 20
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 
-# Instead of storing base64 strings, store PIL images (much lighter)
-ORIGINAL_PAGES = []
-EDITED_PAGES = []
-
 PAGE_STORE = {
     "original": [],
     "edited": []
@@ -44,7 +40,7 @@ def push_undo(page):
     init_page_history(page)
 
     UNDO_STACK[page].append(
-        EDITED_PAGES[page].copy()
+        get_page(page).copy()
     )
 
     if len(UNDO_STACK[page]) > MAX_HISTORY:
@@ -52,13 +48,6 @@ def push_undo(page):
 
     REDO_STACK[page].clear()
     
-def get_page(page):
-    return EDITED_PAGES[page]
-
-
-def set_page(page, img):
-    EDITED_PAGES[page] = img
-
 def get_original_pages():
     return PAGE_STORE["original"]
 
@@ -66,7 +55,6 @@ def get_original_pages():
 def get_edited_pages():
     return PAGE_STORE["edited"]
 
-# прибери прямий доступ до PAGE_STORE 
 def get_original_page(page):
     return PAGE_STORE["original"][page]
 
@@ -86,7 +74,7 @@ def add_pages(original, edited):
 
 @app.route("/load_pdf", methods=["POST"])
 def load_pdf():
-    global ORIGINAL_PAGES, EDITED_PAGES, UNDO_STACK, REDO_STACK
+    global UNDO_STACK, REDO_STACK
 
     # Read uploaded PDF
     pdf_file = request.files["pdf"]
@@ -100,12 +88,11 @@ def load_pdf():
     REDO_STACK.clear()
 
     for page in pages:
-        get_original_pages().append(page)
-        get_edited_pages().append(page.copy())
+        add_pages(page, page.copy())
 
     pages_b64 = [
         pil_to_b64(img)
-        for img in ORIGINAL_PAGES
+        for img in get_original_pages()
     ]
 
     return jsonify({"pages": pages_b64})
@@ -121,19 +108,19 @@ def undo(page):
     if not UNDO_STACK[page]:
         return jsonify({
             "preview": pil_to_b64(
-                EDITED_PAGES[page]
+                get_page(page)
             )
         })
 
     REDO_STACK[page].append(
-        EDITED_PAGES[page].copy()
+        get_page(page).copy()
     )
 
-    EDITED_PAGES[page] = UNDO_STACK[page].pop()
+    set_page(page, UNDO_STACK[page].pop())
 
     return jsonify({
         "preview": pil_to_b64(
-            EDITED_PAGES[page]
+            get_page(page)
         )
     })
 
@@ -146,19 +133,19 @@ def redo(page):
     if not REDO_STACK[page]:
         return jsonify({
             "preview": pil_to_b64(
-                EDITED_PAGES[page]
+                get_page(page)
             )
         })
 
     UNDO_STACK[page].append(
-        EDITED_PAGES[page].copy()
+        get_page(page).copy()
     )
 
-    EDITED_PAGES[page] = REDO_STACK[page].pop()
+    set_page(page, REDO_STACK[page].pop())
 
     return jsonify({
         "preview": pil_to_b64(
-            EDITED_PAGES[page]
+            get_page(page)
         )
     })
 
@@ -167,7 +154,7 @@ def redo(page):
 
 @app.route("/enhance/<int:page>/<string:mode>/<value>", methods=["POST"])
 def enhance_page(page, mode, value):
-    global EDITED_PAGES, UNDO_STACK, REDO_STACK
+    global UNDO_STACK, REDO_STACK
 
     init_page_history(page)
 
@@ -225,7 +212,7 @@ def rotate_page(page, direction):
 
 @app.route("/crop_page", methods=["POST"])
 def crop_page():
-    global EDITED_PAGES, UNDO_STACK, REDO_STACK
+    global UNDO_STACK, REDO_STACK
 
     data = request.json
     page = data["page"]
@@ -246,7 +233,7 @@ def crop_page():
         end
     )
 
-    EDITED_PAGES[page] = cropped
+    set_page(page, cropped)
 
     return jsonify({
         "preview": pil_to_b64(cropped)
@@ -257,7 +244,7 @@ def crop_page():
 
 @app.route("/selection_enhance", methods=["POST"])
 def selection_enhance():
-    global EDITED_PAGES, UNDO_STACK, REDO_STACK
+    global UNDO_STACK, REDO_STACK
 
     data = request.json
     page = data["page"]
@@ -286,7 +273,7 @@ def selection_enhance():
 
 @app.route("/clear_area", methods=["POST"])
 def clear_area():
-    global EDITED_PAGES, UNDO_STACK, REDO_STACK
+    global UNDO_STACK, REDO_STACK
 
     data = request.json
     page = data["page"]

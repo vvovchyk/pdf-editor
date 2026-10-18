@@ -99,18 +99,21 @@ class PdfService:
         return pages
         
     @staticmethod
-    def save_pdf(source_pdf, changed_pages, quality):
+    def save_pdf(source_pdf, changed_pages, quality, page_order=None):
         """Preserve unchanged source pages and rasterize only edited pages."""
-        if not changed_pages:
+        if not changed_pages and page_order is None:
             return source_pdf
 
         source = pymupdf.open(stream=source_pdf, filetype="pdf")
+        if not changed_pages and page_order == list(range(len(source))):
+            return source_pdf
         output = pymupdf.open()
 
-        for index in range(len(source)):
-            image = changed_pages.get(str(index))
+        source_indexes = page_order if page_order is not None else range(len(source))
+        for output_index, source_index in enumerate(source_indexes):
+            image = changed_pages.get(str(output_index))
             if image is None:
-                output.insert_pdf(source, from_page=index, to_page=index)
+                output.insert_pdf(source, from_page=source_index, to_page=source_index)
                 continue
 
             buffer = io.BytesIO()

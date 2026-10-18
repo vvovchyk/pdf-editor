@@ -16,6 +16,7 @@ Built with **Flask**, **PyMuPDF**, **OpenCV**, and **Pillow**.
 - Adjustable PDF compression
 - Undo / Redo system
 - Optional page-size alignment to the most common detected format
+- Delete pages and reorder them before export
 
 ## Tech Stack
 - Python 3

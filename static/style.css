@@ -64,6 +64,35 @@ body.dark {
     cursor: pointer;
 }
 
+.thumbnail-card {
+    padding: 4px;
+    border: 1px solid #444;
+    background: #181818;
+}
+
+.thumbnail-card[draggable="true"] {
+    cursor: grab;
+}
+
+.thumbnail-card[draggable="true"]:active {
+    cursor: grabbing;
+}
+
+.thumbnail-controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+.thumbnail-controls span {
+    margin-right: auto;
+}
+
+.thumbnail-controls button {
+    padding: 4px 8px;
+}
+
 .page-thumb.active {
     border-color: #00aaff;
 }

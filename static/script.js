@@ -1,5 +1,6 @@
 let pages = [];
 let originalPages = [];
+let sourceIndexes = [];
 let currentPage = 0;
 let activeTool = null;
 let selectedArea = null;
@@ -91,11 +92,14 @@ async function editPage(action, pageIndex) {
     let response;
     if (action.type === "enhance") {
         response = await fetch(
-            `/enhance/${pageIndex}/${action.mode}/${encodeURIComponent(action.value)}`,
+            `/enhance/${sourceIndexes[pageIndex]}/${action.mode}/${encodeURIComponent(action.value)}`,
             { method: "POST" }
         );
     } else if (action.type === "rotate") {
-        response = await fetch(`/rotate/${pageIndex}/${action.direction}`, { method: "POST" });
+        response = await fetch(
+            `/rotate/${sourceIndexes[pageIndex]}/${action.direction}`,
+            { method: "POST" }
+        );
     } else {
         throw new Error("Unsupported action.");
     }
@@ -134,6 +138,7 @@ document.getElementById("pdfFile").addEventListener("change", async function () 
         if (!res.ok) throw new Error(data.error || "Could not load PDF.");
         pages = data.pages;
         originalPages = data.pages.slice();
+        sourceIndexes = data.pages.map((_, index) => index);
         dirtyPages.clear();
         currentPage = 0;
         setTool(null);
@@ -176,9 +181,16 @@ function renderPages() {
     container.innerHTML = "";
 
     pages.forEach((b64, index) => {
+        const card = document.createElement("div");
+        card.classList.add("thumbnail-card");
+        card.draggable = pages.length > 1;
+        card.dataset.index = index;
+
         const img = document.createElement("img");
         img.src = "data:image/jpeg;base64," + b64;
         img.classList.add("page-thumb");
+        img.alt = `Page ${index + 1}`;
+        img.draggable = false;
 
         if (document.getElementById("modeToggle").checked) {
             if (index === currentPage) img.classList.add("active");
@@ -190,12 +202,93 @@ function renderPages() {
             currentPage = index;
             renderMainPage();
             updateActiveState();
+            updatePageInfo();
         });
 
-        container.appendChild(img);
+        const controls = document.createElement("div");
+        controls.classList.add("thumbnail-controls");
+
+        const pageLabel = document.createElement("span");
+        pageLabel.innerText = `Page ${index + 1}`;
+
+        const moveUp = document.createElement("button");
+        moveUp.type = "button";
+        moveUp.innerText = "↑";
+        moveUp.title = `Move page ${index + 1} up`;
+        moveUp.setAttribute("aria-label", moveUp.title);
+        moveUp.disabled = index === 0;
+        moveUp.addEventListener("click", () => movePage(index, index - 1));
+
+        const moveDown = document.createElement("button");
+        moveDown.type = "button";
+        moveDown.innerText = "↓";
+        moveDown.title = `Move page ${index + 1} down`;
+        moveDown.setAttribute("aria-label", moveDown.title);
+        moveDown.disabled = index === pages.length - 1;
+        moveDown.addEventListener("click", () => movePage(index, index + 1));
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.innerText = "×";
+        remove.title = `Delete page ${index + 1}`;
+        remove.setAttribute("aria-label", remove.title);
+        remove.disabled = pages.length === 1;
+        remove.addEventListener("click", () => deletePage(index));
+
+        controls.append(pageLabel, moveUp, moveDown, remove);
+        card.append(img, controls);
+        card.addEventListener("dragstart", event => {
+            event.dataTransfer.setData("text/plain", String(index));
+            event.dataTransfer.effectAllowed = "move";
+        });
+        card.addEventListener("dragover", event => {
+            event.preventDefault();
+            event.dataTransfer.dropEffect = "move";
+        });
+        card.addEventListener("drop", event => {
+            event.preventDefault();
+            const from = Number(event.dataTransfer.getData("text/plain"));
+            movePage(from, index);
+        });
+        container.appendChild(card);
     });
 
     updatePageInfo();
+}
+
+function movePage(from, to) {
+    if (from < 0 || to < 0 || from >= pages.length || to >= pages.length || from === to) {
+        return;
+    }
+    const selectedSource = sourceIndexes[currentPage];
+    for (const items of [pages, originalPages, sourceIndexes]) {
+        const [item] = items.splice(from, 1);
+        items.splice(to, 0, item);
+    }
+    currentPage = sourceIndexes.indexOf(selectedSource);
+    dirtyPages.clear();
+    pages.forEach((_, index) => markPageEdited(index));
+    renderPages();
+    renderCurrentPage();
+    updateActiveState();
+}
+
+function deletePage(index) {
+    if (pages.length <= 1) return;
+    if (!window.confirm(`Delete page ${index + 1}? This page will be removed from the saved PDF.`)) {
+        return;
+    }
+    const selectedSource = sourceIndexes[currentPage];
+    for (const items of [pages, originalPages, sourceIndexes]) {
+        items.splice(index, 1);
+    }
+    currentPage = sourceIndexes.indexOf(selectedSource);
+    if (currentPage < 0) currentPage = Math.min(index, pages.length - 1);
+    dirtyPages.clear();
+    pages.forEach((_, pageIndex) => markPageEdited(pageIndex));
+    renderPages();
+    renderCurrentPage();
+    updateActiveState();
 }
 
 // RENDER MAIN PAGE
@@ -236,14 +329,14 @@ function updatePageInfo() {
 // UNDO / REDO
 async function undo() {
     try {
-        const res = await fetch(`/undo/${currentPage}`, { method: "POST" });
+        const res = await fetch(`/undo/${sourceIndexes[currentPage]}`, { method: "POST" });
         setPreview(await responsePreview(res));
     } catch (error) { showError(error); }
 }
 
 async function redo() {
     try {
-        const res = await fetch(`/redo/${currentPage}`, { method: "POST" });
+        const res = await fetch(`/redo/${sourceIndexes[currentPage]}`, { method: "POST" });
         setPreview(await responsePreview(res));
     } catch (error) { showError(error); }
 }
@@ -306,7 +399,7 @@ pageImage.addEventListener("pointerup", async event => {
             const response = await fetch("/crop_page", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ page: currentPage, ...selectedArea })
+                body: JSON.stringify({ page: sourceIndexes[currentPage], ...selectedArea })
             });
             setPreview(await responsePreview(response));
             selectedArea = null;
@@ -326,7 +419,7 @@ async function applySelection(endpoint) {
         const response = await fetch(endpoint, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ page: currentPage, ...selectedArea })
+            body: JSON.stringify({ page: sourceIndexes[currentPage], ...selectedArea })
         });
         setPreview(await responsePreview(response));
         selectedArea = null;
@@ -364,7 +457,8 @@ async function savePDF() {
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 quality,
-                changedPages: [...dirtyPages]
+                changedPages: [...dirtyPages],
+                pageOrder: sourceIndexes
             })
         });
         if (!res.ok) throw new Error("Could not save PDF.");

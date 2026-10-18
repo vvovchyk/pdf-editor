@@ -16,6 +16,14 @@ def make_text_pdf():
     return document.tobytes()
 
 
+def make_labeled_pdf(labels):
+    document = pymupdf.open()
+    for label in labels:
+        page = document.new_page(width=200, height=300)
+        page.insert_text((40, 50), label)
+    return document.tobytes()
+
+
 def test_save_without_changes_returns_original_pdf():
     source_pdf = make_text_pdf()
 
@@ -38,6 +46,45 @@ def test_save_replaces_only_changed_pages():
     assert saved_document[0].rect.height == 40
     assert not saved_document[0].get_text().strip()
     assert "preserved page source" in saved_document[1].get_text()
+
+
+def test_save_pdf_preserves_requested_page_order_and_omits_deleted_pages():
+    source_pdf = make_labeled_pdf(["first page", "second page", "third page"])
+
+    saved_pdf = PdfService.save_pdf(
+        source_pdf,
+        {},
+        80,
+        page_order=[2, 0],
+    )
+    saved_document = pymupdf.open(stream=saved_pdf, filetype="pdf")
+
+    assert len(saved_document) == 2
+    assert "third page" in saved_document[0].get_text()
+    assert "first page" in saved_document[1].get_text()
+
+
+def test_save_without_edits_and_default_page_order_returns_original_pdf():
+    source_pdf = make_text_pdf()
+
+    assert PdfService.save_pdf(source_pdf, {}, 80, page_order=[0, 1]) == source_pdf
+
+
+def test_save_pdf_changed_images_follow_output_order_after_reordering():
+    source_pdf = make_labeled_pdf(["first page", "second page"])
+    changed_image = Image.new("RGB", (40, 30), "red")
+
+    saved_pdf = PdfService.save_pdf(
+        source_pdf,
+        {"0": changed_image},
+        80,
+        page_order=[1, 0],
+    )
+    saved_document = pymupdf.open(stream=saved_pdf, filetype="pdf")
+
+    assert len(saved_document) == 2
+    assert not saved_document[0].get_text().strip()
+    assert "first page" in saved_document[1].get_text()
 
 
 def test_load_pdf_rejects_page_count_above_limit():

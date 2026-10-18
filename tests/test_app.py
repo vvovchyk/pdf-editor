@@ -63,6 +63,14 @@ def make_text_pdf():
     return document.tobytes()
 
 
+def make_labeled_pdf(labels):
+    document = pymupdf.open()
+    for label in labels:
+        page = document.new_page(width=200, height=300)
+        page.insert_text((40, 50), label)
+    return document.tobytes()
+
+
 def test_home_page(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -311,6 +319,72 @@ def test_save_pdf_preserves_unchanged_pages(client):
     assert len(saved_pdf) == 2
     assert not saved_pdf[0].get_text().strip()
     assert "preserved page source" in saved_pdf[1].get_text()
+
+
+def test_save_pdf_applies_page_order_and_deletion(client):
+    source_pdf = make_labeled_pdf(["first page", "second page", "third page"])
+    loaded = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(source_pdf), "ordered.pdf")},
+        content_type="multipart/form-data",
+    )
+    assert loaded.status_code == 200
+
+    response = client.post(
+        "/save_pdf",
+        json={"quality": 80, "changedPages": [], "pageOrder": [2, 0]},
+    )
+
+    assert response.status_code == 200
+    saved_pdf = pymupdf.open(stream=response.data, filetype="pdf")
+    assert len(saved_pdf) == 2
+    assert "third page" in saved_pdf[0].get_text()
+    assert "first page" in saved_pdf[1].get_text()
+
+
+def test_save_pdf_maps_edited_page_by_original_index_after_reordering(client):
+    source_pdf = make_labeled_pdf(["first page", "second page"])
+    loaded = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(source_pdf), "reordered-edit.pdf")},
+        content_type="multipart/form-data",
+    )
+    assert loaded.status_code == 200
+    assert client.post("/rotate/1/left").status_code == 200
+
+    response = client.post(
+        "/save_pdf",
+        json={"quality": 80, "changedPages": [0], "pageOrder": [1, 0]},
+    )
+
+    assert response.status_code == 200
+    saved_pdf = pymupdf.open(stream=response.data, filetype="pdf")
+    assert len(saved_pdf) == 2
+    assert not saved_pdf[0].get_text().strip()
+    assert "first page" in saved_pdf[1].get_text()
+
+
+@pytest.mark.parametrize(
+    ("page_order", "error"),
+    [
+        ([], "Page order must contain unique non-negative page indexes."),
+        ([0, 0], "Page order must contain unique non-negative page indexes."),
+        ([-1], "Page order must contain unique non-negative page indexes."),
+        ([3], "A page order index is out of range."),
+        ([True], "Page order must contain unique non-negative page indexes."),
+    ],
+)
+def test_save_pdf_rejects_invalid_page_order(client, monkeypatch, page_order, error):
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page, page, page]).status_code == 200
+
+    response = client.post(
+        "/save_pdf",
+        json={"changedPages": [], "pageOrder": page_order},
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == error
 
 
 @pytest.mark.parametrize("changed_pages", ["0", [-1], [True], None])

@@ -48,6 +48,14 @@ def make_mixed_size_pdf():
     return document.tobytes()
 
 
+def make_labeled_pdf(labels):
+    document = pymupdf.open()
+    for label in labels:
+        page = document.new_page(width=400, height=500)
+        page.insert_text((40, 50), label)
+    return document.tobytes()
+
+
 def load_pdf(page, app_url, content=None, page_count=1):
     page.goto(app_url)
     page.locator("#pdfFile").set_input_files(
@@ -156,4 +164,34 @@ def test_user_can_decline_detected_page_alignment(browser, app_url):
     expect(page.locator("#pageImage")).to_have_js_property("naturalWidth", 100)
     expect(page.locator("#pageImage")).to_have_js_property("naturalHeight", 150)
     assert alignment_requests == []
+    page.close()
+
+
+def test_user_can_delete_and_reorder_pages_before_saving(browser, app_url):
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    page.on("dialog", lambda dialog: dialog.accept())
+    load_pdf(
+        page,
+        app_url,
+        make_labeled_pdf(["first page", "delete this page", "third page"]),
+        page_count=3,
+    )
+
+    page.get_by_role("button", name="Delete page 2").click()
+    expect(page.locator("#pageInfo")).to_contain_text("Page 1 / 2")
+    expect(page.locator(".thumbnail-card")).to_have_count(2)
+    page.get_by_role("button", name="Move page 2 up").click()
+
+    expect(page.locator("#pageInfo")).to_contain_text("Page 2 / 2")
+    with page.expect_download() as download_info:
+        page.locator('button[onclick="savePDF()"]').click()
+    download = download_info.value
+
+    saved_pdf = pymupdf.open(download.path())
+    assert len(saved_pdf) == 2
+    assert "third page" in saved_pdf[0].get_text()
+    assert "first page" in saved_pdf[1].get_text()
+    assert "delete this page" not in "".join(
+        pdf_page.get_text() for pdf_page in saved_pdf
+    )
     page.close()

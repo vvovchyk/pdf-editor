@@ -339,17 +339,30 @@ def save_pdf():
         return jsonify({"error": "Changed pages must be a list of page indexes."}), 400
     quality = max(10, min(95, int(numeric_value(data.get("quality", 80), "Quality"))))
     edited_pages = PAGE_STORE.pages(get_session_id())
-    if any(index >= len(edited_pages) for index in changed_indexes):
+    page_order = data.get("pageOrder")
+    if page_order is not None and (
+        not isinstance(page_order, list)
+        or not page_order
+        or any(type(index) is not int or index < 0 for index in page_order)
+        or len(set(page_order)) != len(page_order)
+    ):
+        return jsonify({"error": "Page order must contain unique non-negative page indexes."}), 400
+    if page_order is None:
+        page_order = list(range(len(edited_pages)))
+    if any(index >= len(edited_pages) for index in page_order):
+        return jsonify({"error": "A page order index is out of range."}), 400
+    if any(index >= len(page_order) for index in changed_indexes):
         return jsonify({"error": "A changed page index is out of range."}), 400
     changed_pages = {
-        str(index): edited_pages[index]
+        str(index): edited_pages[page_order[index]]
         for index in set(changed_indexes)
     }
 
     pdf_bytes = PdfService.save_pdf(
         PAGE_STORE.source_pdf(get_session_id()),
         changed_pages,
-        quality
+        quality,
+        page_order=page_order if "pageOrder" in data else None,
     )
 
     return send_file(

@@ -28,10 +28,10 @@ Built with **Flask**, **PyMuPDF**, **OpenCV**, and **Pillow**.
 
 ## Deployment
 The GitHub Actions workflow runs tests for pull requests targeting `main` and
-pushes to `main`. The deploy workflow deploys successful `main` pushes to a VPS
-over SSH. Configure the `SSH_PRIVATE_KEY`, `SSH_USER`, and `SSH_HOST` repository
-secrets for deployment. The VPS must have the repository checked out at
-`/var/www/pdfcleaner` and a `pdfcleaner` systemd service configured.
+pushes to `main`. A push to `main` is deployed to the VPS over SSH only after
+the tests pass. Configure the `SSH_PRIVATE_KEY`, `SSH_USER`, and `SSH_HOST`
+repository secrets for deployment. The VPS must have the repository checked
+out at `/var/www/pdfcleaner` and a `pdfcleaner` systemd service configured.
 
 Install dependencies with `python -m pip install -r requirements.txt` and run
 the application with `gunicorn app:app`.

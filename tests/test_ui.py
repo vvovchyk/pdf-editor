@@ -195,3 +195,33 @@ def test_user_can_delete_and_reorder_pages_before_saving(browser, app_url):
         pdf_page.get_text() for pdf_page in saved_pdf
     )
     page.close()
+
+
+def test_batch_over_free_limit_shows_unlock_prompt(browser, app_url, monkeypatch):
+    monkeypatch.setitem(app_module.app.config, "PAYMENTS_ENABLED", True)
+    monkeypatch.setitem(app_module.app.config, "STRIPE_SECRET_KEY", "sk_test_configured")
+    monkeypatch.setitem(
+        app_module.app.config,
+        "STRIPE_WEBHOOK_SECRET",
+        "whsec_configured",
+    )
+    monkeypatch.setitem(
+        app_module.app.config,
+        "PUBLIC_BASE_URL",
+        "https://vovchak.io",
+    )
+    document = pymupdf.open()
+    for _ in range(4):
+        document.new_page(width=200, height=300)
+
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    load_pdf(page, app_url, document.tobytes(), page_count=4)
+    page.locator("#modeToggle").uncheck()
+    page.get_by_role("button", name="✨ Auto Enhance").click()
+
+    expect(page.locator("#paymentPrompt")).to_be_visible()
+    expect(page.locator("#paymentMessage")).to_contain_text(
+        "Batch editing more than 3 pages"
+    )
+    expect(page.get_by_role("button", name="Unlock this PDF")).to_be_visible()
+    page.close()

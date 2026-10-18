@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>PDF Cleaner Advanced</title>
-    <link rel="stylesheet" href="/static/style.css?v=4">
+    <link rel="stylesheet" href="/static/style.css?v=5">
 </head>
 <body class="dark">
 
@@ -21,6 +21,12 @@
         <p>Applying this will rasterize the pages, so text and vector content may no longer be selectable.</p>
         <button id="applyAlignmentBtn" type="button">Align pages</button>
         <button id="dismissAlignmentBtn" type="button">Keep original sizes</button>
+    </section>
+
+    <section id="paymentPrompt" aria-live="polite" hidden>
+        <p id="paymentMessage"></p>
+        <p>One-time payment for this PDF. No account or subscription required.</p>
+        <button id="unlockDocumentBtn" type="button">Unlock this PDF</button>
     </section>
 </section>
 
@@ -125,6 +131,6 @@
     </aside>
 </div>
 
-<script src="/static/script.js?v=4"></script>
+<script src="/static/script.js?v=6"></script>
 </body>
 </html>

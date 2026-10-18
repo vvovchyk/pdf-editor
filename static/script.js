@@ -12,18 +12,106 @@ const dirtyPages = new Set();
 const pageImage = document.getElementById("pageImage");
 const selectionBox = document.getElementById("selectionBox");
 const alignmentPrompt = document.getElementById("alignmentPrompt");
+const paymentPrompt = document.getElementById("paymentPrompt");
+let billingState = { enabled: false, paid: false };
 
 async function responsePreview(response) {
     const data = await response.json();
     if (!response.ok) {
-        throw new Error(data.error || "The operation failed.");
+        const error = new Error(data.error || "The operation failed.");
+        error.paymentRequired = data.payment_required === true;
+        throw error;
     }
     return data.preview;
 }
 
 function showError(error) {
+    if (error.paymentRequired) {
+        showPaymentPrompt(error.message);
+        return;
+    }
     window.alert(error.message || "The operation failed.");
 }
+
+function updateBilling(state) {
+    billingState = state;
+    paymentPrompt.hidden = !(
+        state.enabled && (state.requiresPurchase || state.showPrompt)
+    );
+    if (!paymentPrompt.hidden) {
+        const message = document.getElementById("paymentMessage");
+        message.innerText = state.requiresPurchase
+            ? `This document exceeds the free limit of ${state.freePageLimit} pages or 25 MB. Unlock it for ${state.price} to continue.`
+            : `Unlock this document for ${state.price} to process more than ${state.freeBatchLimit} pages at once or use higher compression.`;
+    }
+}
+
+function showPaymentPrompt(message) {
+    if (!billingState.enabled) {
+        window.alert(message || "This action requires payment.");
+        return;
+    }
+    billingState.showPrompt = true;
+    updateBilling(billingState);
+    if (message) {
+        document.getElementById("paymentMessage").innerText =
+            `${message} Unlock this PDF for ${billingState.price} to continue.`;
+    }
+}
+
+async function refreshBillingStatus() {
+    const response = await fetch("/billing/status");
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || "Could not check payment status.");
+    updateBilling(data);
+}
+
+document.getElementById("unlockDocumentBtn").addEventListener("click", async () => {
+    const checkoutWindow = window.open("about:blank", "_blank");
+    if (!checkoutWindow) {
+        window.alert("Allow pop-ups to open secure checkout.");
+        return;
+    }
+    checkoutWindow.document.title = "Opening secure checkout";
+    try {
+        const response = await fetch("/billing/checkout", { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not start checkout.");
+        checkoutWindow.location = data.url;
+    } catch (error) {
+        checkoutWindow.close();
+        showError(error);
+    }
+});
+
+window.addEventListener("message", async event => {
+    if (
+        event.origin !== window.location.origin
+        || !["pdf-payment-complete", "pdf-payment-pending"].includes(event.data?.type)
+    ) {
+        return;
+    }
+    try {
+        await refreshBillingStatus();
+        if (event.data.type === "pdf-payment-pending" && !billingState.paid) {
+            let attempts = 0;
+            const interval = window.setInterval(async () => {
+                attempts += 1;
+                try {
+                    await refreshBillingStatus();
+                } catch (error) {
+                    window.clearInterval(interval);
+                    showError(error);
+                }
+                if (billingState.paid || attempts >= 60) {
+                    window.clearInterval(interval);
+                }
+            }, 3000);
+        }
+    } catch (error) {
+        showError(error);
+    }
+});
 
 function markPageEdited(index) {
     if (pages[index] === originalPages[index]) dirtyPages.delete(index);
@@ -109,6 +197,31 @@ async function editPage(action, pageIndex) {
 
 async function applyAction(action, pageIndexes) {
     try {
+        if (pageIndexes.length > 1) {
+            const payload = {
+                type: action.type,
+                pages: pageIndexes.map(index => sourceIndexes[index]),
+                ...action
+            };
+            const response = await fetch("/batch_action", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                const error = new Error(data.error || "The operation failed.");
+                error.paymentRequired = data.payment_required === true;
+                throw error;
+            }
+            pageIndexes.forEach(index => {
+                pages[index] = data.previews[String(sourceIndexes[index])];
+                markPageEdited(index);
+            });
+            renderCurrentPage();
+            renderPages();
+            return;
+        }
         for (const index of pageIndexes) {
             await editPage(action, index);
         }
@@ -142,6 +255,7 @@ document.getElementById("pdfFile").addEventListener("change", async function () 
         dirtyPages.clear();
         currentPage = 0;
         setTool(null);
+        updateBilling(data.billing || { enabled: false, paid: false });
         alignmentPrompt.hidden = !data.alignment?.needed;
         if (data.alignment?.needed) {
             document.getElementById("alignmentMessage").innerText =
@@ -161,7 +275,7 @@ document.getElementById("applyAlignmentBtn").addEventListener("click", async () 
         if (!response.ok) {
             throw new Error(data.error || "Could not align pages.");
         }
-        pages = data.pages;
+        pages = sourceIndexes.map(index => data.pages[index]);
         pages.forEach((_, index) => markPageEdited(index));
         alignmentPrompt.hidden = true;
         renderPages();
@@ -174,6 +288,10 @@ document.getElementById("applyAlignmentBtn").addEventListener("click", async () 
 document.getElementById("dismissAlignmentBtn").addEventListener("click", () => {
     alignmentPrompt.hidden = true;
 });
+
+if (new URLSearchParams(window.location.search).get("payment") === "cancelled") {
+    window.history.replaceState({}, "", window.location.pathname);
+}
 
 // RENDER THUMBNAILS
 function renderPages() {
@@ -461,7 +579,12 @@ async function savePDF() {
                 pageOrder: sourceIndexes
             })
         });
-        if (!res.ok) throw new Error("Could not save PDF.");
+        if (!res.ok) {
+            const data = await res.json();
+            const error = new Error(data.error || "Could not save PDF.");
+            error.paymentRequired = data.payment_required === true;
+            throw error;
+        }
         const url = window.URL.createObjectURL(await res.blob());
         const link = document.createElement("a");
         link.href = url;

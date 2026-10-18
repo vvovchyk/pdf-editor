@@ -71,6 +71,13 @@ def make_labeled_pdf(labels):
     return document.tobytes()
 
 
+def configure_payments(monkeypatch):
+    monkeypatch.setitem(app.config, "PAYMENTS_ENABLED", True)
+    monkeypatch.setitem(app.config, "STRIPE_SECRET_KEY", "sk_test_configured")
+    monkeypatch.setitem(app.config, "STRIPE_WEBHOOK_SECRET", "whsec_configured")
+    monkeypatch.setitem(app.config, "PUBLIC_BASE_URL", "https://vovchak.io")
+
+
 def test_home_page(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -498,3 +505,264 @@ def test_oversized_upload_returns_json_error(client, monkeypatch):
 
     assert response.status_code == 413
     assert response.get_json()["error"] == "The request exceeds the maximum allowed size."
+
+
+def test_payments_are_disabled_without_complete_configuration(client, monkeypatch):
+    monkeypatch.setitem(app.config, "PAYMENTS_ENABLED", True)
+
+    response = client.post("/billing/checkout")
+
+    assert response.status_code == 503
+    assert response.get_json()["error"] == "Payments are not configured yet."
+
+
+def test_billing_routes_return_clear_error_without_loaded_pdf(client, monkeypatch):
+    configure_payments(monkeypatch)
+
+    status = client.get("/billing/status")
+    checkout = client.post("/billing/checkout")
+
+    assert status.status_code == 404
+    assert checkout.status_code == 404
+    assert status.get_json()["error"] == "No PDF is loaded for this session."
+    assert checkout.get_json()["error"] == "No PDF is loaded for this session."
+
+
+def test_checkout_uses_fixed_server_configured_price(client, monkeypatch):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+    captured = {}
+
+    class FakeCheckoutSession:
+        @staticmethod
+        def create(**kwargs):
+            captured.update(kwargs)
+            return type("Checkout", (), {"url": "https://checkout.stripe.test/session"})()
+
+    monkeypatch.setattr(app_module.stripe.checkout, "Session", FakeCheckoutSession)
+    response = client.post("/billing/checkout")
+
+    assert response.status_code == 200
+    assert response.get_json()["url"] == "https://checkout.stripe.test/session"
+    assert captured["line_items"][0]["price_data"]["currency"] == "eur"
+    assert captured["line_items"][0]["price_data"]["unit_amount"] == 99
+    assert captured["mode"] == "payment"
+    assert captured["metadata"]["session_id"] == captured["client_reference_id"]
+    assert captured["metadata"]["product"] == app_module.PAYMENT_PRODUCT_ID
+    assert len(captured["metadata"]["document_hash"]) == 64
+
+
+def test_webhook_grants_entitlement_only_after_verified_paid_checkout(
+    client, monkeypatch
+):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+    checkout_values = {}
+
+    class FakeCheckoutSession:
+        @staticmethod
+        def create(**kwargs):
+            checkout_values.update(kwargs)
+            return type("Checkout", (), {"url": "https://checkout.stripe.test/session"})()
+
+    monkeypatch.setattr(app_module.stripe.checkout, "Session", FakeCheckoutSession)
+    assert client.post("/billing/checkout").status_code == 200
+
+    checkout_id = "cs_test_paid"
+    event_checkout = {
+        "id": checkout_id,
+        "mode": "payment",
+        "payment_status": "paid",
+        "client_reference_id": checkout_values["client_reference_id"],
+        "metadata": checkout_values["metadata"],
+    }
+    monkeypatch.setattr(
+        app_module.stripe.Webhook,
+        "construct_event",
+        lambda *args, **kwargs: {
+            "type": "checkout.session.completed",
+            "data": {"object": event_checkout},
+        },
+    )
+    response = client.post(
+        "/billing/webhook",
+        data=b"verified payload",
+        headers={"Stripe-Signature": "verified"},
+    )
+
+    assert response.status_code == 200
+    status = client.get("/billing/status")
+    assert status.get_json()["enabled"] is True
+    assert status.get_json()["paid"] is True
+
+
+def test_success_redirect_verifies_checkout_and_grants_entitlement(
+    client, monkeypatch
+):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+    checkout_values = {}
+
+    class FakeCheckoutSession:
+        @staticmethod
+        def create(**kwargs):
+            checkout_values.update(kwargs)
+            return type("Checkout", (), {"url": "https://checkout.stripe.test/session"})()
+
+        @staticmethod
+        def retrieve(checkout_id):
+            return {
+                "id": checkout_id,
+                "mode": "payment",
+                "payment_status": "paid",
+                "client_reference_id": checkout_values["client_reference_id"],
+                "metadata": checkout_values["metadata"],
+            }
+
+    monkeypatch.setattr(app_module.stripe.checkout, "Session", FakeCheckoutSession)
+    assert client.post("/billing/checkout").status_code == 200
+
+    response = client.get(
+        "/billing/success?checkout_session_id=cs_test_paid",
+    )
+
+    assert response.status_code == 200
+    assert b"Payment verified" in response.data
+    assert client.get("/billing/status").get_json()["paid"] is True
+
+
+def test_webhook_rejects_invalid_signature(client, monkeypatch):
+    configure_payments(monkeypatch)
+
+    def reject_signature(*args, **kwargs):
+        raise app_module.stripe.SignatureVerificationError(
+            "bad signature",
+            "invalid",
+        )
+
+    monkeypatch.setattr(app_module.stripe.Webhook, "construct_event", reject_signature)
+    response = client.post(
+        "/billing/webhook",
+        data=b"tampered",
+        headers={"Stripe-Signature": "invalid"},
+    )
+
+    assert response.status_code == 400
+
+
+def test_unpaid_checkout_webhook_does_not_unlock_document(client, monkeypatch):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+    event_checkout = {
+        "id": "cs_test_unpaid",
+        "mode": "payment",
+        "payment_status": "unpaid",
+        "client_reference_id": "wrong-session",
+        "metadata": {
+            "session_id": "wrong-session",
+            "document_hash": "0" * 64,
+        },
+    }
+    monkeypatch.setattr(
+        app_module.stripe.Webhook,
+        "construct_event",
+        lambda *args, **kwargs: {
+            "type": "checkout.session.completed",
+            "data": {"object": event_checkout},
+        },
+    )
+
+    response = client.post(
+        "/billing/webhook",
+        data=b"verified payload",
+        headers={"Stripe-Signature": "verified"},
+    )
+
+    assert response.status_code == 200
+    assert client.get("/billing/status").get_json()["paid"] is False
+
+
+def test_large_document_requires_payment_when_billing_is_enabled(
+    client, monkeypatch
+):
+    configure_payments(monkeypatch)
+    pages = [Image.new("RGB", (2, 2), "white") for _ in range(21)]
+    assert load_test_pages(client, monkeypatch, pages).status_code == 200
+
+    response = client.post("/rotate/0/left")
+
+    assert response.status_code == 402
+    assert response.get_json()["payment_required"] is True
+
+
+def test_oversized_document_requires_payment_when_billing_is_enabled(
+    client, monkeypatch
+):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+    monkeypatch.setattr(
+        app_module.PAGE_STORE,
+        "source_pdf",
+        lambda _: b"x" * (app_module.FREE_PDF_SIZE + 1),
+    )
+
+    response = client.post("/rotate/0/left")
+
+    assert response.status_code == 402
+    assert response.get_json()["payment_required"] is True
+
+
+def test_batch_edits_allow_three_pages_but_require_payment_for_more(
+    client, monkeypatch
+):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (4, 3), "white")
+    assert load_test_pages(client, monkeypatch, [page.copy() for _ in range(4)]).status_code == 200
+
+    allowed = client.post(
+        "/batch_action",
+        json={"type": "rotate", "direction": "left", "pages": [0, 1, 2]},
+    )
+    blocked = client.post(
+        "/batch_action",
+        json={"type": "rotate", "direction": "left", "pages": [0, 1, 2, 3]},
+    )
+
+    assert allowed.status_code == 200
+    assert set(allowed.get_json()["previews"]) == {"0", "1", "2"}
+    assert blocked.status_code == 402
+
+
+def test_low_compression_quality_requires_payment_when_enabled(client, monkeypatch):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+    assert client.post("/rotate/0/left").status_code == 200
+
+    response = client.post(
+        "/save_pdf",
+        json={"changedPages": [0], "quality": 60},
+    )
+
+    assert response.status_code == 402
+    assert response.get_json()["payment_required"] is True
+
+
+def test_low_quality_without_edited_pages_does_not_require_payment(
+    client, monkeypatch
+):
+    configure_payments(monkeypatch)
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+
+    response = client.post(
+        "/save_pdf",
+        json={"changedPages": [], "quality": 60},
+    )
+
+    assert response.status_code == 200

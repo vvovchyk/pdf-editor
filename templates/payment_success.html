@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Payment complete</title>
+</head>
+<body>
+    {% if payment_complete %}
+        <p>Payment verified. You can return to the PDF editor.</p>
+    {% else %}
+        <p>Payment is processing. Keep the PDF editor open; it will update automatically.</p>
+    {% endif %}
+    <script>
+        if (window.opener) {
+            window.opener.postMessage(
+                { type: {{ ("pdf-payment-complete" if payment_complete else "pdf-payment-pending") | tojson }} },
+                window.location.origin
+            );
+            if ({{ payment_complete | tojson }}) window.close();
+        }
+    </script>
+</body>
+</html>

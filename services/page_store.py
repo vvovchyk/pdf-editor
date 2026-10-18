@@ -43,6 +43,13 @@ class PageStore:
 					key TEXT PRIMARY KEY,
 					value TEXT NOT NULL
 				);
+				CREATE TABLE IF NOT EXISTS document_entitlements (
+					session_id TEXT NOT NULL,
+					document_hash TEXT NOT NULL,
+					checkout_session_id TEXT NOT NULL UNIQUE,
+					created_at REAL NOT NULL,
+					PRIMARY KEY (session_id, document_hash)
+				);
 				"""
 			)
 
@@ -116,6 +123,24 @@ class PageStore:
 			raise KeyError("No PDF is loaded for this session.")
 		return row[0]
 
+	def has_entitlement(self, session_id, document_hash):
+		with self._connect() as connection:
+			row = connection.execute(
+				"""SELECT 1 FROM document_entitlements
+				   WHERE session_id = ? AND document_hash = ?""",
+				(session_id, document_hash),
+			).fetchone()
+		return row is not None
+
+	def grant_entitlement(self, session_id, document_hash, checkout_session_id):
+		with self._connect() as connection:
+			connection.execute(
+				"""INSERT OR IGNORE INTO document_entitlements
+				   (session_id, document_hash, checkout_session_id, created_at)
+				   VALUES (?, ?, ?, ?)""",
+				(session_id, document_hash, checkout_session_id, time.time()),
+			)
+
 	def pages(self, session_id, kind="edited"):
 		if kind not in {"original", "edited"}:
 			raise ValueError("Unknown page collection.")
@@ -125,6 +150,14 @@ class PageStore:
 				(session_id,),
 			).fetchall()
 		return [self._decode_image(row[0]) for row in rows]
+
+	def page_count(self, session_id):
+		with self._connect() as connection:
+			row = connection.execute(
+				"SELECT COUNT(*) FROM pages WHERE session_id = ?",
+				(session_id,),
+			).fetchone()
+		return row[0]
 
 	def page(self, session_id, page_index, kind="edited"):
 		if kind not in {"original", "edited"}:

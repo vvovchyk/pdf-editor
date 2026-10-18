@@ -208,7 +208,7 @@ def test_batch_over_free_limit_shows_unlock_prompt(browser, app_url, monkeypatch
     monkeypatch.setitem(
         app_module.app.config,
         "PUBLIC_BASE_URL",
-        "https://vovchak.io",
+        "https://pdfcleaner.vovchak.io",
     )
     document = pymupdf.open()
     for _ in range(4):

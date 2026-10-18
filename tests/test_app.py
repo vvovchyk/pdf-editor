@@ -75,7 +75,11 @@ def configure_payments(monkeypatch):
     monkeypatch.setitem(app.config, "PAYMENTS_ENABLED", True)
     monkeypatch.setitem(app.config, "STRIPE_SECRET_KEY", "sk_test_configured")
     monkeypatch.setitem(app.config, "STRIPE_WEBHOOK_SECRET", "whsec_configured")
-    monkeypatch.setitem(app.config, "PUBLIC_BASE_URL", "https://vovchak.io")
+    monkeypatch.setitem(
+        app.config,
+        "PUBLIC_BASE_URL",
+        "https://pdfcleaner.vovchak.io",
+    )
 
 
 def test_home_page(client):

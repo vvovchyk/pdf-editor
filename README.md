@@ -55,8 +55,9 @@ then run the test suite with `python -m pytest -q`.
 Create and verify a Stripe account. The application creates a fixed one-time
 EUR €0.99 Checkout line item for unlocking one PDF. Add these server environment
 variables: `PAYMENTS_ENABLED=true`, `STRIPE_SECRET_KEY`,
-`STRIPE_WEBHOOK_SECRET`, and `PUBLIC_BASE_URL=https://vovchak.io`.
-Register `https://vovchak.io/billing/webhook` in Stripe for the
+`STRIPE_WEBHOOK_SECRET`, and
+`PUBLIC_BASE_URL=https://pdfcleaner.vovchak.io`.
+Register `https://pdfcleaner.vovchak.io/billing/webhook` in Stripe for the
 `checkout.session.completed` and `checkout.session.async_payment_succeeded`
 events. Store secret values only in the VPS or deployment secret manager,
 never in source control. Payment restrictions remain off until all required

@@ -1,3 +1,10 @@
+import cv2
+import numpy as np
+from PIL import ImageEnhance, ImageFilter
+
+from utils.converters import cv_to_pil, pil_to_cv
+
+
 class ImageProcessor:
 
     @staticmethod
@@ -14,8 +21,18 @@ class ImageProcessor:
 
     @staticmethod
     def denoise(img, value):
+        size = max(3, int(value))
+        if size % 2 == 0:
+            size += 1
+        max_size = min(img.size)
+        if max_size % 2 == 0:
+            max_size -= 1
+        if max_size < 3:
+            return img.copy()
+        size = min(size, max_size)
+
         return img.filter(
-            ImageFilter.MedianFilter(size=int(value))
+            ImageFilter.MedianFilter(size=size)
         )
 
     @staticmethod

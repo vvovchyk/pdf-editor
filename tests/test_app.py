@@ -24,6 +24,19 @@ def client(tmp_path, monkeypatch):
 def load_test_pages(client, monkeypatch, pages):
     monkeypatch.setattr(
         app_module.PdfService,
+        "page_size_info",
+        staticmethod(
+            lambda _: {
+                "needed": False,
+                "format": "Test format",
+                "formatCount": 1,
+                "targetWidth": pages[0].width,
+                "targetHeight": pages[0].height,
+            }
+        ),
+    )
+    monkeypatch.setattr(
+        app_module.PdfService,
         "load_pdf",
         staticmethod(lambda _, **kwargs: pages),
     )
@@ -35,7 +48,11 @@ def load_test_pages(client, monkeypatch, pages):
 
 
 def decode_preview(response):
-    return Image.open(io.BytesIO(base64.b64decode(response.get_json()["preview"])))
+    return decode_image(response.get_json()["preview"])
+
+
+def decode_image(encoded_image):
+    return Image.open(io.BytesIO(base64.b64decode(encoded_image)))
 
 
 def make_text_pdf():
@@ -57,6 +74,19 @@ def test_load_pdf_returns_loaded_pages(client, monkeypatch):
         app_module.PdfService,
         "load_pdf",
         staticmethod(lambda _, **kwargs: [page]),
+    )
+    monkeypatch.setattr(
+        app_module.PdfService,
+        "page_size_info",
+        staticmethod(
+            lambda _: {
+                "needed": False,
+                "format": "Test format",
+                "formatCount": 1,
+                "targetWidth": 2,
+                "targetHeight": 2,
+            }
+        ),
     )
 
     response = client.post(
@@ -93,6 +123,48 @@ def test_load_pdf_rejects_more_than_configured_page_limit(client, monkeypatch):
     assert response.get_json()["error"] == "PDF exceeds the maximum allowed page count of 1."
 
 
+def test_align_pages_normalizes_all_pages_and_supports_undo(client):
+    document = pymupdf.open()
+    document.new_page(width=200, height=300)
+    document.new_page(width=100, height=150)
+    source_pdf = document.tobytes()
+    loaded = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(source_pdf), "mixed-sizes.pdf")},
+        content_type="multipart/form-data",
+    )
+    assert loaded.status_code == 200
+    assert loaded.get_json()["alignment"]["needed"] is True
+    assert loaded.get_json()["alignment"]["format"] == "200 × 300 pt"
+
+    aligned = client.post("/align_pages")
+
+    assert aligned.status_code == 200
+    assert [
+        decode_image(image).size for image in aligned.get_json()["pages"]
+    ] == [(200, 300), (200, 300)]
+    undone = client.post("/undo/1")
+    assert decode_preview(undone).size == (100, 150)
+
+
+def test_align_pages_rejects_uniform_size_document(client):
+    document = pymupdf.open()
+    document.new_page(width=200, height=300)
+    source_pdf = document.tobytes()
+    loaded = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(source_pdf), "same-sizes.pdf")},
+        content_type="multipart/form-data",
+    )
+    assert loaded.status_code == 200
+    assert loaded.get_json()["alignment"]["needed"] is False
+
+    response = client.post("/align_pages")
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "All pages already use the same paper size."
+
+
 def test_document_state_is_isolated_between_clients(monkeypatch, tmp_path):
     monkeypatch.setattr(app_module, "PAGE_STORE", PageStore(tmp_path / "state.sqlite3"))
     monkeypatch.setattr(
@@ -102,6 +174,19 @@ def test_document_state_is_isolated_between_clients(monkeypatch, tmp_path):
             lambda stream, **kwargs: [
                 Image.new("RGB", (int(stream.read()), 3), "white")
             ]
+        ),
+    )
+    monkeypatch.setattr(
+        app_module.PdfService,
+        "page_size_info",
+        staticmethod(
+            lambda _: {
+                "needed": False,
+                "format": "Test format",
+                "formatCount": 1,
+                "targetWidth": 1,
+                "targetHeight": 3,
+            }
         ),
     )
     first_client = app.test_client()

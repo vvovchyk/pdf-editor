@@ -149,10 +149,39 @@ def load_pdf():
         return jsonify({"error": "The uploaded file is not a valid PDF."}), 400
     if not pages:
         return jsonify({"error": "The uploaded PDF has no pages."}), 400
+    alignment = PdfService.page_size_info(source_pdf)
     PAGE_STORE.reset(get_session_id(), source_pdf, pages)
     pages_b64 = [pil_to_b64(page) for page in pages]
 
-    return jsonify({"pages": pages_b64})
+    return jsonify({"pages": pages_b64, "alignment": alignment})
+
+
+@app.route("/align_pages", methods=["POST"])
+def align_pages():
+    session_id = get_session_id()
+    source_pdf = PAGE_STORE.source_pdf(session_id)
+    alignment = PdfService.page_size_info(source_pdf)
+    if not alignment["needed"]:
+        raise InvalidRequest("All pages already use the same paper size.")
+    pages = PAGE_STORE.pages(session_id)
+
+    aligned_pages = [
+        PdfService.align_image(
+            page,
+            alignment["targetWidth"],
+            alignment["targetHeight"],
+        )
+        for page in pages
+    ]
+
+    for index, image in enumerate(aligned_pages):
+        push_undo(index)
+        set_page(index, image)
+
+    return jsonify({
+        "pages": [pil_to_b64(page) for page in aligned_pages],
+        "format": alignment["format"],
+    })
 
 
 # ========================= UNDO / REDO =========================

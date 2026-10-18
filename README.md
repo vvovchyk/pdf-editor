@@ -15,6 +15,7 @@ Built with **Flask**, **PyMuPDF**, **OpenCV**, and **Pillow**.
 - Background removal
 - Adjustable PDF compression
 - Undo / Redo system
+- Optional page-size alignment to the most common detected format
 
 ## Tech Stack
 - Python 3
@@ -38,6 +39,7 @@ the application with `gunicorn app:app`.
 - Session state is stored in SQLite at `instance/pdf_state.sqlite3` by default.
 - Set `FLASK_SECRET_KEY` to a stable secret in production. `PAGE_STORE_PATH` can override the database path.
 - Uploads are limited to 200 MB and 100 pages.
+- Mixed page sizes are detected after upload. Users can align pages to the most common size or keep the original sizes; alignment preserves portrait/landscape orientation, fits and centers content without cropping.
 - Unchanged pages retain their original PDF content. Edited pages are exported as JPEG images, so their text/vector content is rasterized.
 - Multiple workers on one host can share the SQLite database. Multiple app instances need a shared database and storage location.
 

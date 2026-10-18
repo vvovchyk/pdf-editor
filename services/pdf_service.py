@@ -1,6 +1,7 @@
-import pymupdf
 import io
-from PIL import Image
+import pymupdf
+
+from PIL import Image, ImageOps
 
 
 class PdfPageLimitError(Exception):
@@ -8,6 +9,61 @@ class PdfPageLimitError(Exception):
 
 
 class PdfService:
+    @staticmethod
+    def page_size_info(source_pdf):
+        """Return detected page-size variation and the most common paper size."""
+        document = pymupdf.open(stream=source_pdf, filetype="pdf")
+        sizes = [(page.rect.width, page.rect.height) for page in document]
+        groups = {}
+
+        for width, height in sizes:
+            key = (round(min(width, height)), round(max(width, height)))
+            groups.setdefault(key, []).append((width, height))
+
+        target_key = max(groups, key=lambda key: len(groups[key]))
+        target_width, target_height = groups[target_key][0]
+        label = PdfService._format_label(*target_key)
+        return {
+            "needed": len(groups) > 1,
+            "format": label,
+            "formatCount": len(groups),
+            "targetWidth": target_width,
+            "targetHeight": target_height,
+        }
+
+    @staticmethod
+    def _format_label(width, height):
+        known_formats = {
+            (595, 842): "A4",
+            (420, 595): "A5",
+            (297, 420): "A6",
+            (842, 1191): "A3",
+            (612, 792): "Letter",
+            (612, 1008): "Legal",
+        }
+        name = known_formats.get((width, height))
+        dimensions = f"{width} × {height} pt"
+        return f"{name} ({dimensions})" if name else dimensions
+
+    @staticmethod
+    def align_image(image, target_width, target_height):
+        """Fit a page image onto the target paper size without cropping."""
+        canvas_width = max(1, round(target_width))
+        canvas_height = max(1, round(target_height))
+        if image.width > image.height:
+            canvas_width, canvas_height = canvas_height, canvas_width
+
+        fitted = ImageOps.contain(
+            image,
+            (canvas_width, canvas_height),
+            method=Image.Resampling.LANCZOS,
+        )
+        canvas = Image.new("RGB", (canvas_width, canvas_height), "white")
+        canvas.paste(
+            fitted,
+            ((canvas_width - fitted.width) // 2, (canvas_height - fitted.height) // 2),
+        )
+        return canvas
 
     @staticmethod
     def load_pdf(pdf_file, max_pages=None):

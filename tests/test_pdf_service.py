@@ -43,3 +43,45 @@ def test_save_replaces_only_changed_pages():
 def test_load_pdf_rejects_page_count_above_limit():
     with pytest.raises(PdfPageLimitError, match="maximum allowed page count of 1"):
         PdfService.load_pdf(io.BytesIO(make_text_pdf()), max_pages=1)
+
+
+def test_page_size_info_detects_mixed_sizes_and_most_common_format():
+    document = pymupdf.open()
+    document.new_page(width=200, height=300)
+    document.new_page(width=200, height=300)
+    document.new_page(width=100, height=150)
+
+    info = PdfService.page_size_info(document.tobytes())
+
+    assert info["needed"] is True
+    assert info["formatCount"] == 2
+    assert info["format"] == "200 × 300 pt"
+
+
+def test_page_size_info_treats_rotated_pages_as_same_paper_format():
+    document = pymupdf.open()
+    document.new_page(width=595, height=842)
+    document.new_page(width=842, height=595)
+
+    info = PdfService.page_size_info(document.tobytes())
+
+    assert info["needed"] is False
+    assert info["format"] == "A4 (595 × 842 pt)"
+
+
+def test_align_image_fits_and_centers_without_cropping():
+    image = Image.new("RGB", (100, 50), "red")
+
+    aligned = PdfService.align_image(image, 100, 100)
+
+    assert aligned.size == (100, 100)
+    assert aligned.getpixel((50, 10)) == (255, 255, 255)
+    assert aligned.getpixel((50, 50)) == (255, 0, 0)
+
+
+def test_align_image_preserves_landscape_orientation():
+    image = Image.new("RGB", (50, 25), "blue")
+
+    aligned = PdfService.align_image(image, 100, 200)
+
+    assert aligned.size == (200, 100)

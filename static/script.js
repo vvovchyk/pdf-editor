@@ -10,6 +10,7 @@ const dirtyPages = new Set();
 
 const pageImage = document.getElementById("pageImage");
 const selectionBox = document.getElementById("selectionBox");
+const alignmentPrompt = document.getElementById("alignmentPrompt");
 
 async function responsePreview(response) {
     const data = await response.json();
@@ -136,11 +137,37 @@ document.getElementById("pdfFile").addEventListener("change", async function () 
         dirtyPages.clear();
         currentPage = 0;
         setTool(null);
+        alignmentPrompt.hidden = !data.alignment?.needed;
+        if (data.alignment?.needed) {
+            document.getElementById("alignmentMessage").innerText =
+                `This PDF has ${data.alignment.formatCount} page sizes. Align all pages to ${data.alignment.format}?`;
+        }
         renderPages();
         renderCurrentPage();
     } catch (error) {
         showError(error);
     }
+});
+
+document.getElementById("applyAlignmentBtn").addEventListener("click", async () => {
+    try {
+        const response = await fetch("/align_pages", { method: "POST" });
+        const data = await response.json();
+        if (!response.ok) {
+            throw new Error(data.error || "Could not align pages.");
+        }
+        pages = data.pages;
+        pages.forEach((_, index) => markPageEdited(index));
+        alignmentPrompt.hidden = true;
+        renderPages();
+        renderCurrentPage();
+    } catch (error) {
+        showError(error);
+    }
+});
+
+document.getElementById("dismissAlignmentBtn").addEventListener("click", () => {
+    alignmentPrompt.hidden = true;
 });
 
 // RENDER THUMBNAILS

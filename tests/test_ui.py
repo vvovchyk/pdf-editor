@@ -41,17 +41,24 @@ def make_pdf():
     return document.tobytes()
 
 
-def load_pdf(page, app_url):
+def make_mixed_size_pdf():
+    document = pymupdf.open()
+    document.new_page(width=200, height=300)
+    document.new_page(width=100, height=150)
+    return document.tobytes()
+
+
+def load_pdf(page, app_url, content=None, page_count=1):
     page.goto(app_url)
     page.locator("#pdfFile").set_input_files(
         {
             "name": "browser-test.pdf",
             "mimeType": "application/pdf",
-            "buffer": make_pdf(),
+            "buffer": content or make_pdf(),
         }
     )
     expect(page.locator("#pageImage")).to_be_visible()
-    expect(page.locator("#pageInfo")).to_contain_text("Page 1 / 1")
+    expect(page.locator("#pageInfo")).to_contain_text(f"Page 1 / {page_count}")
 
 
 def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
@@ -108,4 +115,45 @@ def test_zoom_controls_update_page_scale(browser, app_url):
     page.get_by_role("button", name="➖").click()
     expect(page.locator("#zoomValue")).to_have_text("100%")
     assert image.bounding_box()["width"] == pytest.approx(original_width)
+    page.close()
+
+
+def test_user_can_accept_detected_page_alignment(browser, app_url):
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    load_pdf(page, app_url, make_mixed_size_pdf(), page_count=2)
+
+    prompt = page.locator("#alignmentPrompt")
+    expect(prompt).to_be_visible()
+    expect(page.locator("#alignmentMessage")).to_contain_text(
+        "Align all pages to 200 × 300 pt"
+    )
+
+    page.get_by_role("button", name="Align pages").click()
+
+    expect(prompt).to_be_hidden()
+    expect(page.locator("#pageInfo")).to_contain_text("Page 1 / 2")
+    page.locator(".page-thumb").nth(1).click()
+    expect(page.locator("#pageImage")).to_have_js_property("naturalWidth", 200)
+    expect(page.locator("#pageImage")).to_have_js_property("naturalHeight", 300)
+    page.close()
+
+
+def test_user_can_decline_detected_page_alignment(browser, app_url):
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    load_pdf(page, app_url, make_mixed_size_pdf(), page_count=2)
+    alignment_requests = []
+    page.on(
+        "request",
+        lambda request: alignment_requests.append(request)
+        if request.url.endswith("/align_pages")
+        else None,
+    )
+
+    page.get_by_role("button", name="Keep original sizes").click()
+
+    expect(page.locator("#alignmentPrompt")).to_be_hidden()
+    page.locator(".page-thumb").nth(1).click()
+    expect(page.locator("#pageImage")).to_have_js_property("naturalWidth", 100)
+    expect(page.locator("#pageImage")).to_have_js_property("naturalHeight", 150)
+    assert alignment_requests == []
     page.close()

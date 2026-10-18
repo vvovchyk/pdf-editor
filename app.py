@@ -7,12 +7,13 @@ from flask import Flask, jsonify, render_template, request, send_file, session
 import pymupdf
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from services.pdf_service import PdfService
+from services.pdf_service import PdfPageLimitError, PdfService
 from services.image_service import ImageProcessor
 from services.page_store import PageStore
 from utils.converters import cv_to_pil, pil_to_b64, pil_to_cv
 
 MAX_HISTORY = 20
+MAX_PDF_PAGES = 100
 ENHANCEMENT_MODES = {
     "contrast",
     "brightness",
@@ -31,6 +32,7 @@ ENHANCEMENT_RANGES = {
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
+app.config["MAX_PDF_PAGES"] = MAX_PDF_PAGES
 
 PAGE_STORE = PageStore(
     os.environ.get("PAGE_STORE_PATH", os.path.join(app.instance_path, "pdf_state.sqlite3"))
@@ -137,7 +139,12 @@ def load_pdf():
 
     source_pdf = pdf_file.read()
     try:
-        pages = PdfService.load_pdf(io.BytesIO(source_pdf))
+        pages = PdfService.load_pdf(
+            io.BytesIO(source_pdf),
+            max_pages=app.config["MAX_PDF_PAGES"],
+        )
+    except PdfPageLimitError as error:
+        return jsonify({"error": str(error)}), 400
     except pymupdf.FileDataError:
         return jsonify({"error": "The uploaded file is not a valid PDF."}), 400
     if not pages:

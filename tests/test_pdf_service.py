@@ -1,7 +1,10 @@
+import io
+
 import pymupdf
+import pytest
 from PIL import Image
 
-from services.pdf_service import PdfService
+from services.pdf_service import PdfPageLimitError, PdfService
 from utils.converters import pil_to_b64
 
 
@@ -35,3 +38,8 @@ def test_save_replaces_only_changed_pages():
     assert saved_document[0].rect.height == 40
     assert not saved_document[0].get_text().strip()
     assert "preserved page source" in saved_document[1].get_text()
+
+
+def test_load_pdf_rejects_page_count_above_limit():
+    with pytest.raises(PdfPageLimitError, match="maximum allowed page count of 1"):
+        PdfService.load_pdf(io.BytesIO(make_text_pdf()), max_pages=1)

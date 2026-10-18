@@ -25,7 +25,7 @@ def load_test_pages(client, monkeypatch, pages):
     monkeypatch.setattr(
         app_module.PdfService,
         "load_pdf",
-        staticmethod(lambda _: pages),
+        staticmethod(lambda _, **kwargs: pages),
     )
     return client.post(
         "/load_pdf",
@@ -56,7 +56,7 @@ def test_load_pdf_returns_loaded_pages(client, monkeypatch):
     monkeypatch.setattr(
         app_module.PdfService,
         "load_pdf",
-        staticmethod(lambda _: [page]),
+        staticmethod(lambda _, **kwargs: [page]),
     )
 
     response = client.post(
@@ -80,12 +80,29 @@ def test_load_pdf_rejects_invalid_file(client):
     assert response.get_json()["error"] == "The uploaded file is not a valid PDF."
 
 
+def test_load_pdf_rejects_more_than_configured_page_limit(client, monkeypatch):
+    monkeypatch.setitem(app.config, "MAX_PDF_PAGES", 1)
+
+    response = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(make_text_pdf()), "many-pages.pdf")},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "PDF exceeds the maximum allowed page count of 1."
+
+
 def test_document_state_is_isolated_between_clients(monkeypatch, tmp_path):
     monkeypatch.setattr(app_module, "PAGE_STORE", PageStore(tmp_path / "state.sqlite3"))
     monkeypatch.setattr(
         app_module.PdfService,
         "load_pdf",
-        staticmethod(lambda stream: [Image.new("RGB", (int(stream.read()), 3), "white")]),
+        staticmethod(
+            lambda stream, **kwargs: [
+                Image.new("RGB", (int(stream.read()), 3), "white")
+            ]
+        ),
     )
     first_client = app.test_client()
     second_client = app.test_client()

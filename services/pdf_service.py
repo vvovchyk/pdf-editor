@@ -3,10 +3,14 @@ import io
 from PIL import Image
 
 
+class PdfPageLimitError(Exception):
+    pass
+
+
 class PdfService:
 
     @staticmethod
-    def load_pdf(pdf_file):
+    def load_pdf(pdf_file, max_pages=None):
         """Convert uploaded PDF into a list of PIL images."""
 
         pages = []
@@ -15,6 +19,10 @@ class PdfService:
             stream=pdf_file.read(),
             filetype="pdf"
         )
+        if max_pages is not None and len(doc) > max_pages:
+            raise PdfPageLimitError(
+                f"PDF exceeds the maximum allowed page count of {max_pages}."
+            )
 
         for i in range(len(doc)):
             page = doc.load_page(i)

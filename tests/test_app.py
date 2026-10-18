@@ -69,6 +69,17 @@ def test_load_pdf_returns_loaded_pages(client, monkeypatch):
     assert len(response.get_json()["pages"]) == 1
 
 
+def test_load_pdf_rejects_invalid_file(client):
+    response = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(b"not a PDF"), "invalid.pdf")},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "The uploaded file is not a valid PDF."
+
+
 def test_document_state_is_isolated_between_clients(monkeypatch, tmp_path):
     monkeypatch.setattr(app_module, "PAGE_STORE", PageStore(tmp_path / "state.sqlite3"))
     monkeypatch.setattr(
@@ -232,3 +243,82 @@ def test_page_operations_return_not_found_without_loaded_document(client):
 
     assert response.status_code == 404
     assert response.get_json()["error"] == "Page does not exist."
+
+
+@pytest.mark.parametrize(
+    ("mode", "value"),
+    [
+        ("not-a-mode", "1"),
+        ("contrast", "not-a-number"),
+        ("contrast", "nan"),
+        ("contrast", "inf"),
+        ("contrast", "2.6"),
+        ("brightness", "0.4"),
+        ("sharpness", "3.1"),
+        ("denoise", "6"),
+    ],
+)
+def test_enhance_rejects_invalid_mode_or_value(client, monkeypatch, mode, value):
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+
+    response = client.post(f"/enhance/0/{mode}/{value}")
+
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+
+def test_rotate_rejects_invalid_direction(client, monkeypatch):
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+
+    response = client.post("/rotate/0/up")
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Rotation direction must be 'left' or 'right'."
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        {"page": 0, "start": {"x": -1, "y": 0}, "end": {"x": 2, "y": 2}},
+        {"page": 0, "start": {"x": 0, "y": 0}, "end": {"x": 3, "y": 2}},
+        {"page": 0, "start": {"x": 1.5, "y": 0}, "end": {"x": 2, "y": 2}},
+        {"page": 0, "start": {"x": 0, "y": 0}, "end": {"x": 0, "y": 2}},
+    ],
+)
+def test_clear_area_rejects_invalid_selection(client, monkeypatch, selection):
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+
+    response = client.post("/clear_area", json=selection)
+
+    assert response.status_code == 400
+    assert "error" in response.get_json()
+
+
+def test_crop_rejects_non_json_request(client):
+    response = client.post("/crop_page", data="not JSON")
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "A JSON object is required."
+
+
+def test_save_pdf_rejects_non_numeric_quality(client):
+    response = client.post("/save_pdf", json={"quality": "high"})
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Quality must be a finite number."
+
+
+def test_oversized_upload_returns_json_error(client, monkeypatch):
+    monkeypatch.setitem(app.config, "MAX_CONTENT_LENGTH", 100)
+
+    response = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(b"x" * 200), "large.pdf")},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 413
+    assert response.get_json()["error"] == "The request exceeds the maximum allowed size."

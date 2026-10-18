@@ -1,8 +1,11 @@
 import os
 import secrets
 import io
+import math
 
 from flask import Flask, jsonify, render_template, request, send_file, session
+import pymupdf
+from werkzeug.exceptions import RequestEntityTooLarge
 
 from services.pdf_service import PdfService
 from services.image_service import ImageProcessor
@@ -10,6 +13,21 @@ from services.page_store import PageStore
 from utils.converters import cv_to_pil, pil_to_b64, pil_to_cv
 
 MAX_HISTORY = 20
+ENHANCEMENT_MODES = {
+    "contrast",
+    "brightness",
+    "sharpness",
+    "denoise",
+    "auto",
+    "remove_bg",
+    "deskew",
+}
+ENHANCEMENT_RANGES = {
+    "contrast": (0.5, 2.5),
+    "brightness": (0.5, 2.0),
+    "sharpness": (0, 3),
+    "denoise": (0, 5),
+}
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
@@ -44,6 +62,71 @@ def push_undo(page):
 @app.errorhandler(KeyError)
 def handle_missing_document(error):
     return jsonify({"error": str(error)}), 404
+
+
+@app.errorhandler(RequestEntityTooLarge)
+def handle_request_too_large(error):
+    return jsonify({"error": "The request exceeds the maximum allowed size."}), 413
+
+
+class InvalidRequest(Exception):
+    pass
+
+
+@app.errorhandler(InvalidRequest)
+def handle_invalid_request(error):
+    return jsonify({"error": str(error)}), 400
+
+
+def json_object():
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        raise InvalidRequest("A JSON object is required.")
+    return data
+
+
+def selection_request():
+    data = json_object()
+    page = data.get("page")
+    if type(page) is not int or page < 0:
+        raise InvalidRequest("Page must be a non-negative integer.")
+
+    start = data.get("start")
+    end = data.get("end")
+    if not isinstance(start, dict) or not isinstance(end, dict):
+        raise InvalidRequest("Selection start and end coordinates are required.")
+
+    coordinates = (start.get("x"), start.get("y"), end.get("x"), end.get("y"))
+    if any(type(value) is not int for value in coordinates):
+        raise InvalidRequest("Selection coordinates must be integers.")
+
+    image = get_page(page)
+    x1, y1, x2, y2 = coordinates
+    if (
+        min(x1, x2) < 0
+        or min(y1, y2) < 0
+        or max(x1, x2) > image.width
+        or max(y1, y2) > image.height
+        or x1 == x2
+        or y1 == y2
+    ):
+        raise InvalidRequest("Selection coordinates are outside the page or empty.")
+
+    return page, start, end, image
+
+
+def numeric_value(value, field):
+    if isinstance(value, bool):
+        raise InvalidRequest(f"{field} must be a finite number.")
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        raise InvalidRequest(f"{field} must be a finite number.") from None
+    if not math.isfinite(number):
+        raise InvalidRequest(f"{field} must be a finite number.")
+    return number
+
+
 # ========================= LOAD PDF =========================
 
 @app.route("/load_pdf", methods=["POST"])
@@ -53,7 +136,12 @@ def load_pdf():
         return jsonify({"error": "A PDF file is required."}), 400
 
     source_pdf = pdf_file.read()
-    pages = PdfService.load_pdf(io.BytesIO(source_pdf))
+    try:
+        pages = PdfService.load_pdf(io.BytesIO(source_pdf))
+    except pymupdf.FileDataError:
+        return jsonify({"error": "The uploaded file is not a valid PDF."}), 400
+    if not pages:
+        return jsonify({"error": "The uploaded PDF has no pages."}), 400
     PAGE_STORE.reset(get_session_id(), source_pdf, pages)
     pages_b64 = [pil_to_b64(page) for page in pages]
 
@@ -78,10 +166,19 @@ def redo(page):
 
 @app.route("/enhance/<int:page>/<string:mode>/<value>", methods=["POST"])
 def enhance_page(page, mode, value):
+    if mode not in ENHANCEMENT_MODES:
+        raise InvalidRequest("Unknown enhancement mode.")
+    value = numeric_value(value, "Enhancement value")
+    if mode in ENHANCEMENT_RANGES:
+        minimum, maximum = ENHANCEMENT_RANGES[mode]
+        if not minimum <= value <= maximum:
+            raise InvalidRequest(
+                f"{mode.capitalize()} must be between {minimum} and {maximum}."
+            )
+
     push_undo(page)
 
     img = get_page(page)
-    value = float(value)
 
     if mode == "contrast":
         img = ImageProcessor.contrast(img, value)
@@ -113,6 +210,9 @@ def enhance_page(page, mode, value):
 
 @app.route("/rotate/<int:page>/<string:direction>", methods=["POST"])
 def rotate_page(page, direction):
+    if direction not in {"left", "right"}:
+        raise InvalidRequest("Rotation direction must be 'left' or 'right'.")
+
     push_undo(page)
     img = get_page(page)
 
@@ -132,13 +232,8 @@ def rotate_page(page, direction):
 
 @app.route("/crop_page", methods=["POST"])
 def crop_page():
-    data = request.json
-    page = data["page"]
-    start = data["start"]
-    end = data["end"]
+    page, start, end, img = selection_request()
     push_undo(page)
-
-    img = get_page(page)
 
     cropped = ImageProcessor.crop(
         img,
@@ -157,13 +252,8 @@ def crop_page():
 
 @app.route("/selection_enhance", methods=["POST"])
 def selection_enhance():
-    data = request.json
-    page = data["page"]
-    start = data["start"]
-    end = data["end"]
+    page, start, end, img = selection_request()
     push_undo(page)
-
-    img = get_page(page)
 
     img = ImageProcessor.selection_enhance(
         img,
@@ -182,14 +272,10 @@ def selection_enhance():
 
 @app.route("/clear_area", methods=["POST"])
 def clear_area():
-    data = request.json
-    page = data["page"]
-    start = data["start"]
-    end = data["end"]
+    page, start, end, img = selection_request()
 
     push_undo(page)
 
-    img = get_page(page)
     cv = pil_to_cv(img)
 
     x1 = int(start["x"])
@@ -209,13 +295,13 @@ def clear_area():
 
 @app.route("/save_pdf", methods=["POST"])
 def save_pdf():
-    data = request.get_json(silent=True) or {}
+    data = json_object()
     changed_indexes = data.get("changedPages", [])
     if not isinstance(changed_indexes, list) or any(
         type(index) is not int or index < 0 for index in changed_indexes
     ):
         return jsonify({"error": "Changed pages must be a list of page indexes."}), 400
-    quality = max(10, min(95, int(data.get("quality", 80))))
+    quality = max(10, min(95, int(numeric_value(data.get("quality", 80), "Quality"))))
     edited_pages = PAGE_STORE.pages(get_session_id())
     if any(index >= len(edited_pages) for index in changed_indexes):
         return jsonify({"error": "A changed page index is out of range."}), 400

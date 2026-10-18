@@ -96,8 +96,8 @@
         <h3>Crop & Selection</h3>
         <button id="cropBtn" onclick="startCrop()">✂ Crop</button>
         <button id="selectBtn" onclick="startSelection()">Select Area</button>
-        <button id="enhanceAreaBtn" onclick="applySelectionEnhance()">Enhance Selected Area</button>
-        <button id="clearAreaBtn" onclick="clearSelectedArea()">Clear Selected Area</button>
+        <button id="enhanceAreaBtn" onclick="applySelectionEnhance()" disabled>Enhance Selected Area</button>
+        <button id="clearAreaBtn" onclick="clearSelectedArea()" disabled>Clear Selected Area</button>
 
         <h3>Rotate</h3>
         <button onclick="rotateLeft()">⟲ Rotate Left</button>
@@ -118,6 +118,6 @@
     </aside>
 </div>
 
-<script src="/static/script.js"></script>
+<script src="/static/script.js?v=2"></script>
 </body>
 </html>

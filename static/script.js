@@ -69,10 +69,16 @@ function setTool(tool) {
     if (tool !== null) {
         selectedArea = null;
         selectionBox.hidden = true;
+        setSelectionActionsEnabled(false);
     } else if (!selectedArea) {
         selectionBox.hidden = true;
     }
     pageImage.classList.toggle("selecting", Boolean(tool));
+}
+
+function setSelectionActionsEnabled(enabled) {
+    document.getElementById("enhanceAreaBtn").disabled = !enabled;
+    document.getElementById("clearAreaBtn").disabled = !enabled;
 }
 
 function updateZoom() {
@@ -277,11 +283,13 @@ pageImage.addEventListener("pointerup", async event => {
             });
             setPreview(await responsePreview(response));
             selectedArea = null;
+            setSelectionActionsEnabled(false);
             setTool(null);
         } catch (error) { showError(error); }
     } else {
         activeTool = null;
         pageImage.classList.remove("selecting");
+        setSelectionActionsEnabled(true);
     }
 });
 
@@ -296,6 +304,7 @@ async function applySelection(endpoint) {
         setPreview(await responsePreview(response));
         selectedArea = null;
         selectionBox.hidden = true;
+        setSelectionActionsEnabled(false);
     } catch (error) { showError(error); }
 }
 

@@ -42,7 +42,8 @@ the application with `gunicorn app:app`.
 - Multiple workers on one host can share the SQLite database. Multiple app instances need a shared database and storage location.
 
 ## Tests
-Run the test suite locally with `python -m pytest -q`.
+Install development dependencies with `python -m pip install -r requirements-dev.txt`,
+then run the test suite with `python -m pytest -q`.
 
 ## License
 MIT

@@ -1,99 +1,61 @@
-from flask import Flask, render_template, request, jsonify, send_file
-import pymupdf
+import os
+import secrets
 import io
 
-from utils.converters import (
-    pil_to_b64,
-    b64_to_pil,
-    pil_to_cv,
-    cv_to_pil
-)
+from flask import Flask, jsonify, render_template, request, send_file, session
 
 from services.pdf_service import PdfService
 from services.image_service import ImageProcessor
+from services.page_store import PageStore
+from utils.converters import cv_to_pil, pil_to_b64, pil_to_cv
 
 MAX_HISTORY = 20
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 
-PAGE_STORE = {
-    "original": [],
-    "edited": []
-}
-
-# Store only single-page snapshots for undo/redo
-UNDO_STACK = {}
-REDO_STACK = {}
-
-# Helper functions
-def init_page_history(page):
-
-    if page not in UNDO_STACK:
-        UNDO_STACK[page] = []
-
-    if page not in REDO_STACK:
-        REDO_STACK[page] = []
-
-def push_undo(page):
-
-    init_page_history(page)
-
-    UNDO_STACK[page].append(
-        get_page(page).copy()
-    )
-
-    if len(UNDO_STACK[page]) > MAX_HISTORY:
-        UNDO_STACK[page].pop(0)
-
-    REDO_STACK[page].clear()
-    
-def get_original_pages():
-    return PAGE_STORE["original"]
+PAGE_STORE = PageStore(
+    os.environ.get("PAGE_STORE_PATH", os.path.join(app.instance_path, "pdf_state.sqlite3"))
+)
+app.config["SECRET_KEY"] = (
+    os.environ.get("FLASK_SECRET_KEY") or PAGE_STORE.get_or_create_secret_key()
+)
 
 
-def get_edited_pages():
-    return PAGE_STORE["edited"]
-
-def get_original_page(page):
-    return PAGE_STORE["original"][page]
+def get_session_id():
+    if "document_id" not in session:
+        session["document_id"] = secrets.token_urlsafe(32)
+    return session["document_id"]
 
 
 def get_page(page):
-    return PAGE_STORE["edited"][page]
+    return PAGE_STORE.page(get_session_id(), page)
 
 
 def set_page(page, img):
-    PAGE_STORE["edited"][page] = img
+    PAGE_STORE.set_page(get_session_id(), page, img)
 
 
-def add_pages(original, edited):
-    PAGE_STORE["original"].append(original)
-    PAGE_STORE["edited"].append(edited)
+def push_undo(page):
+    PAGE_STORE.push_undo(get_session_id(), page, MAX_HISTORY)
+
+
+@app.errorhandler(IndexError)
+@app.errorhandler(KeyError)
+def handle_missing_document(error):
+    return jsonify({"error": str(error)}), 404
 # ========================= LOAD PDF =========================
 
 @app.route("/load_pdf", methods=["POST"])
 def load_pdf():
-    global UNDO_STACK, REDO_STACK
+    pdf_file = request.files.get("pdf")
+    if pdf_file is None:
+        return jsonify({"error": "A PDF file is required."}), 400
 
-    # Read uploaded PDF
-    pdf_file = request.files["pdf"]
-
-    pages = PdfService.load_pdf(pdf_file)
-
-    # Reset editor state
-    get_original_pages().clear()
-    get_edited_pages().clear()
-    UNDO_STACK.clear()
-    REDO_STACK.clear()
-
-    for page in pages:
-        add_pages(page, page.copy())
-
-    pages_b64 = [
-        pil_to_b64(img)
-        for img in get_original_pages()
-    ]
+    source_pdf = pdf_file.read()
+    pages = PdfService.load_pdf(io.BytesIO(source_pdf))
+    PAGE_STORE.reset(get_session_id(), source_pdf, pages)
+    pages_b64 = [pil_to_b64(page) for page in pages]
 
     return jsonify({"pages": pages_b64})
 
@@ -102,62 +64,20 @@ def load_pdf():
 
 @app.route("/undo/<int:page>", methods=["POST"])
 def undo(page):
-
-    init_page_history(page)
-
-    if not UNDO_STACK[page]:
-        return jsonify({
-            "preview": pil_to_b64(
-                get_page(page)
-            )
-        })
-
-    REDO_STACK[page].append(
-        get_page(page).copy()
-    )
-
-    set_page(page, UNDO_STACK[page].pop())
-
-    return jsonify({
-        "preview": pil_to_b64(
-            get_page(page)
-        )
-    })
+    image = PAGE_STORE.undo(get_session_id(), page, MAX_HISTORY)
+    return jsonify({"preview": pil_to_b64(image)})
 
 
 @app.route("/redo/<int:page>", methods=["POST"])
 def redo(page):
-
-    init_page_history(page)
-
-    if not REDO_STACK[page]:
-        return jsonify({
-            "preview": pil_to_b64(
-                get_page(page)
-            )
-        })
-
-    UNDO_STACK[page].append(
-        get_page(page).copy()
-    )
-
-    set_page(page, REDO_STACK[page].pop())
-
-    return jsonify({
-        "preview": pil_to_b64(
-            get_page(page)
-        )
-    })
+    image = PAGE_STORE.redo(get_session_id(), page, MAX_HISTORY)
+    return jsonify({"preview": pil_to_b64(image)})
 
 
 # ========================= ENHANCEMENTS =========================
 
 @app.route("/enhance/<int:page>/<string:mode>/<value>", methods=["POST"])
 def enhance_page(page, mode, value):
-    global UNDO_STACK, REDO_STACK
-
-    init_page_history(page)
-
     push_undo(page)
 
     img = get_page(page)
@@ -193,7 +113,7 @@ def enhance_page(page, mode, value):
 
 @app.route("/rotate/<int:page>/<string:direction>", methods=["POST"])
 def rotate_page(page, direction):
-
+    push_undo(page)
     img = get_page(page)
 
     img = ImageProcessor.rotate(
@@ -212,17 +132,10 @@ def rotate_page(page, direction):
 
 @app.route("/crop_page", methods=["POST"])
 def crop_page():
-    global UNDO_STACK, REDO_STACK
-
     data = request.json
     page = data["page"]
     start = data["start"]
     end = data["end"]
-    
-    
-    # Stack for later use in undo/redo
-    init_page_history(page)
-
     push_undo(page)
 
     img = get_page(page)
@@ -244,14 +157,10 @@ def crop_page():
 
 @app.route("/selection_enhance", methods=["POST"])
 def selection_enhance():
-    global UNDO_STACK, REDO_STACK
-
     data = request.json
     page = data["page"]
     start = data["start"]
     end = data["end"]
-    # Stack for later use in undo/redo
-    init_page_history(page)
     push_undo(page)
 
     img = get_page(page)
@@ -273,15 +182,11 @@ def selection_enhance():
 
 @app.route("/clear_area", methods=["POST"])
 def clear_area():
-    global UNDO_STACK, REDO_STACK
-
     data = request.json
     page = data["page"]
     start = data["start"]
     end = data["end"]
 
-    # Stack for later use in undo/redo
-    init_page_history(page)
     push_undo(page)
 
     img = get_page(page)
@@ -304,13 +209,24 @@ def clear_area():
 
 @app.route("/save_pdf", methods=["POST"])
 def save_pdf():
-    data = request.json
-
-    pages_b64 = data["pages"]
-    quality = int(data["quality"])
+    data = request.get_json(silent=True) or {}
+    changed_indexes = data.get("changedPages", [])
+    if not isinstance(changed_indexes, list) or any(
+        type(index) is not int or index < 0 for index in changed_indexes
+    ):
+        return jsonify({"error": "Changed pages must be a list of page indexes."}), 400
+    quality = max(10, min(95, int(data.get("quality", 80))))
+    edited_pages = PAGE_STORE.pages(get_session_id())
+    if any(index >= len(edited_pages) for index in changed_indexes):
+        return jsonify({"error": "A changed page index is out of range."}), 400
+    changed_pages = {
+        str(index): edited_pages[index]
+        for index in set(changed_indexes)
+    }
 
     pdf_bytes = PdfService.save_pdf(
-        pages_b64,
+        PAGE_STORE.source_pdf(get_session_id()),
+        changed_pages,
         quality
     )
 

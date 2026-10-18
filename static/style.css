@@ -22,10 +22,36 @@ body.dark {
     border: 1px solid #444;
     padding: 10px;
     background: #111;
+    max-height: 80vh;
+    overflow: auto;
+}
+
+#imageWrapper {
+    position: relative;
+    width: 100%;
 }
 
 #pageImage {
+    display: block;
     max-width: 100%;
+    height: auto;
+}
+
+#pageImage.selecting {
+    cursor: crosshair;
+    touch-action: none;
+}
+
+#selectionBox {
+    position: absolute;
+    z-index: 1;
+    border: 1px dashed #ffdc64;
+    background: rgb(255 220 100 / 18%);
+    pointer-events: none;
+}
+
+#selectionBox[hidden] {
+    display: none;
 }
 
 .page-thumb {

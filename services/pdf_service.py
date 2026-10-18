@@ -2,8 +2,6 @@ import pymupdf
 import io
 from PIL import Image
 
-from utils.converters import b64_to_pil
-
 
 class PdfService:
 
@@ -37,43 +35,28 @@ class PdfService:
         return pages
         
     @staticmethod
-    def save_pdf(pages_b64, quality):
-        """Build a PDF from edited page images."""
-        new_pdf = pymupdf.open()
-        
-        for b64 in pages_b64:
-            img = b64_to_pil(b64)
-            # Compress image before embedding
-            img.thumbnail(
-                (img.width, img.height),
-                Image.LANCZOS
+    def save_pdf(source_pdf, changed_pages, quality):
+        """Preserve unchanged source pages and rasterize only edited pages."""
+        if not changed_pages:
+            return source_pdf
+
+        source = pymupdf.open(stream=source_pdf, filetype="pdf")
+        output = pymupdf.open()
+
+        for index in range(len(source)):
+            image = changed_pages.get(str(index))
+            if image is None:
+                output.insert_pdf(source, from_page=index, to_page=index)
+                continue
+
+            buffer = io.BytesIO()
+            image.save(buffer, format="JPEG", quality=quality)
+
+            page = output.new_page(
+                width=image.width,
+                height=image.height,
             )
+            page.insert_image(page.rect, stream=buffer.getvalue())
 
-            buf = io.BytesIO()
-
-            img.save(
-                buf,
-                format="JPEG",
-                quality=quality
-            )
-
-            jpeg_bytes = buf.getvalue()
-
-            rect = pymupdf.Rect(
-                0,
-                0,
-                img.width,
-                img.height
-            )
-
-            page = new_pdf.new_page(
-                width=img.width,
-                height=img.height
-            )
-
-            page.insert_image(
-                rect,
-                stream=jpeg_bytes
-            )
-
-        return new_pdf.tobytes()
+        output.set_metadata(source.metadata)
+        return output.tobytes()

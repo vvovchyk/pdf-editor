@@ -33,5 +33,11 @@ pip install -r requirements.txt
 Start command:
 gunicorn app:app
 
+## Storage
+- Session state is stored in SQLite at `instance/pdf_state.sqlite3` by default.
+- Set `FLASK_SECRET_KEY` to a stable secret in production. `PAGE_STORE_PATH` can override the database path.
+- Unchanged pages retain their original PDF content. Edited pages are exported as JPEG images, so their text/vector content is rasterized.
+- Multiple workers on one host can share the SQLite database. Multiple app instances need a shared database and storage location.
+
 ## License
 MIT

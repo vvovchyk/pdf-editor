@@ -43,6 +43,7 @@ the application with `gunicorn app:app`.
 
 ## Tests
 Install development dependencies with `python -m pip install -r requirements-dev.txt`,
+install Chromium for browser tests with `python -m playwright install chromium`,
 then run the test suite with `python -m pytest -q`.
 
 ## License

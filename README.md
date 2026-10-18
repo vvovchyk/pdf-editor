@@ -22,22 +22,27 @@ Built with **Flask**, **PyMuPDF**, **OpenCV**, and **Pillow**.
 - PyMuPDF
 - OpenCV
 - Pillow
-- Gunicorn (Render deployment)
+- Gunicorn (VPS deployment)
 
 ## Deployment
-This project is deployed on **Render** as a Web Service.
+The GitHub Actions workflow runs tests for pull requests targeting `main` and
+pushes to `main`. The deploy workflow deploys successful `main` pushes to a VPS
+over SSH. Configure the `SSH_PRIVATE_KEY`, `SSH_USER`, and `SSH_HOST` repository
+secrets for deployment. The VPS must have the repository checked out at
+`/var/www/pdfcleaner` and a `pdfcleaner` systemd service configured.
 
-Build command:
-pip install -r requirements.txt
-
-Start command:
-gunicorn app:app
+Install dependencies with `python -m pip install -r requirements.txt` and run
+the application with `gunicorn app:app`.
 
 ## Storage
 - Session state is stored in SQLite at `instance/pdf_state.sqlite3` by default.
 - Set `FLASK_SECRET_KEY` to a stable secret in production. `PAGE_STORE_PATH` can override the database path.
+- Uploads are limited to 200 MB and 100 pages.
 - Unchanged pages retain their original PDF content. Edited pages are exported as JPEG images, so their text/vector content is rasterized.
 - Multiple workers on one host can share the SQLite database. Multiple app instances need a shared database and storage location.
+
+## Tests
+Run the test suite locally with `python -m pytest -q`.
 
 ## License
 MIT

@@ -552,6 +552,7 @@ def test_checkout_uses_fixed_server_configured_price(client, monkeypatch):
     assert captured["line_items"][0]["price_data"]["currency"] == "eur"
     assert captured["line_items"][0]["price_data"]["unit_amount"] == 99
     assert captured["mode"] == "payment"
+    assert captured["managed_payments"] == {"enabled": False}
     assert captured["metadata"]["session_id"] == captured["client_reference_id"]
     assert captured["metadata"]["product"] == app_module.PAYMENT_PRODUCT_ID
     assert len(captured["metadata"]["document_hash"]) == 64

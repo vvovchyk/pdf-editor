@@ -466,6 +466,7 @@ def create_billing_checkout():
     try:
         checkout = stripe.checkout.Session.create(
             mode="payment",
+            managed_payments={"enabled": False},
             line_items=[{
                 "price_data": {
                     "currency": PAYMENT_CURRENCY,

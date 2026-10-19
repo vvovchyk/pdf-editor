@@ -246,6 +246,12 @@ def grant_paid_checkout(checkout, expected_session_id):
     )
 
 
+def stripe_resource_to_dict(resource):
+    if isinstance(resource, stripe.StripeObject):
+        return resource.to_dict()
+    return resource
+
+
 def validate_checkout_document(checkout, expected_session_id):
     metadata = checkout.get("metadata") or {}
     session_id = metadata.get("session_id")
@@ -513,7 +519,7 @@ def stripe_webhook():
         "checkout.session.completed",
         "checkout.session.async_payment_succeeded",
     }:
-        checkout = event["data"]["object"]
+        checkout = stripe_resource_to_dict(event["data"]["object"])
         if checkout.get("payment_status") == "paid":
             try:
                 grant_paid_checkout(
@@ -541,6 +547,7 @@ def billing_success():
     except stripe.StripeError:
         app.logger.exception("Stripe checkout verification failed.")
         return jsonify({"error": "Could not verify the payment yet."}), 502
+    checkout = stripe_resource_to_dict(checkout)
     if checkout.get("payment_status") != "paid":
         try:
             validate_checkout_document(checkout, get_session_id())

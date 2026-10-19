@@ -576,13 +576,16 @@ def test_webhook_grants_entitlement_only_after_verified_paid_checkout(
     assert client.post("/billing/checkout").status_code == 200
 
     checkout_id = "cs_test_paid"
-    event_checkout = {
-        "id": checkout_id,
-        "mode": "payment",
-        "payment_status": "paid",
-        "client_reference_id": checkout_values["client_reference_id"],
-        "metadata": checkout_values["metadata"],
-    }
+    event_checkout = app_module.stripe.StripeObject.construct_from(
+        {
+            "id": checkout_id,
+            "mode": "payment",
+            "payment_status": "paid",
+            "client_reference_id": checkout_values["client_reference_id"],
+            "metadata": checkout_values["metadata"],
+        },
+        "sk_test_configured",
+    )
     monkeypatch.setattr(
         app_module.stripe.Webhook,
         "construct_event",
@@ -619,13 +622,16 @@ def test_success_redirect_verifies_checkout_and_grants_entitlement(
 
         @staticmethod
         def retrieve(checkout_id):
-            return {
-                "id": checkout_id,
-                "mode": "payment",
-                "payment_status": "paid",
-                "client_reference_id": checkout_values["client_reference_id"],
-                "metadata": checkout_values["metadata"],
-            }
+            return app_module.stripe.StripeObject.construct_from(
+                {
+                    "id": checkout_id,
+                    "mode": "payment",
+                    "payment_status": "paid",
+                    "client_reference_id": checkout_values["client_reference_id"],
+                    "metadata": checkout_values["metadata"],
+                },
+                "sk_test_configured",
+            )
 
     monkeypatch.setattr(app_module.stripe.checkout, "Session", FakeCheckoutSession)
     assert client.post("/billing/checkout").status_code == 200

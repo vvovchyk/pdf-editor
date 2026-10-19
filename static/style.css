@@ -137,3 +137,12 @@ button {
 button:hover {
     background: #444;
 }
+#site-footer {
+    padding: 16px;
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+#site-footer a {
+    color: inherit;
+}

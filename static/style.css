@@ -122,6 +122,21 @@ body.dark {
     border: 1px solid #444;
 }
 
+#ad-container {
+    margin-top: 24px;
+    padding-top: 12px;
+    border-top: 1px solid #444;
+    overflow: hidden;
+}
+
+#ad-container p {
+    margin: 0 0 8px;
+    color: #aaa;
+    font-size: 0.75rem;
+    text-align: center;
+    text-transform: uppercase;
+}
+
 .slider-row {
     margin-bottom: 15px;
 }

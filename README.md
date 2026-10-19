@@ -43,6 +43,7 @@ the application with `gunicorn app:app`.
 - Uploads are limited to 200 MB and 100 pages.
 - Mixed page sizes are detected after upload. Users can align pages to the most common size or keep the original sizes; alignment preserves portrait/landscape orientation, fits and centers content without cropping.
 - Payment controls remain disabled unless `PAYMENTS_ENABLED=true` and Stripe API, webhook, and HTTPS public URL settings are configured. Checkout uses a fixed inline price of €0.99 per PDF.
+- A responsive Google AdSense display unit is shown in the editor sidebar after AdSense serves it. The publisher consent message must be configured and published in AdSense; ads may not appear until site/ad-unit review and consent settings are effective.
 - Unchanged pages retain their original PDF content. Edited pages are exported as JPEG images, so their text/vector content is rasterized.
 - Multiple workers on one host can share the SQLite database. Multiple app instances need a shared database and storage location.
 

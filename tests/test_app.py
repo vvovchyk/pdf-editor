@@ -85,6 +85,9 @@ def configure_payments(monkeypatch):
 def test_home_page(client):
     response = client.get("/")
     assert response.status_code == 200
+    assert b"ca-pub-2211245923059324" in response.data
+    assert b'data-ad-slot="4918423712"' in response.data
+    assert b'id="ad-container"' in response.data
 
 
 def test_load_pdf_returns_loaded_pages(client, monkeypatch):

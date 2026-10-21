@@ -1,7 +1,11 @@
 import io
+import math
 import pymupdf
 
 from PIL import Image, ImageOps
+
+MAX_PAGE_PIXELS = 20_000_000
+MAX_TOTAL_PIXELS = 100_000_000
 
 
 class PdfPageLimitError(Exception):
@@ -66,23 +70,50 @@ class PdfService:
         return canvas
 
     @staticmethod
-    def load_pdf(pdf_file, max_pages=None):
+    def load_pdf(
+        pdf_file,
+        max_pages=None,
+        max_page_pixels=MAX_PAGE_PIXELS,
+        max_total_pixels=MAX_TOTAL_PIXELS,
+    ):
         """Convert uploaded PDF into a list of PIL images."""
 
-        pages = []
-
-        doc = pymupdf.open(
-            stream=pdf_file.read(),
-            filetype="pdf"
-        )
+        doc = pymupdf.open(stream=pdf_file.read(), filetype="pdf")
         if max_pages is not None and len(doc) > max_pages:
             raise PdfPageLimitError(
                 f"PDF exceeds the maximum allowed page count of {max_pages}."
             )
 
+        total_pixels = 0
         for i in range(len(doc)):
             page = doc.load_page(i)
-
+            rect = page.rect
+            if (
+                not math.isfinite(rect.width)
+                or not math.isfinite(rect.height)
+                or rect.width <= 0
+                or rect.height <= 0
+            ):
+                raise PdfPageLimitError(
+                    f"PDF page {i + 1} has invalid dimensions."
+                )
+            width = math.ceil(rect.width)
+            height = math.ceil(rect.height)
+            pixels = width * height
+            if pixels > max_page_pixels:
+                raise PdfPageLimitError(
+                    f"PDF page {i + 1} exceeds the maximum allowed "
+                    f"size of {max_page_pixels} pixels."
+                )
+            total_pixels += pixels
+            if total_pixels > max_total_pixels:
+                raise PdfPageLimitError(
+                    f"PDF exceeds the maximum allowed total of "
+                    f"{max_total_pixels} pixels."
+                )
+        pages = []
+        for i in range(len(doc)):
+            page = doc.load_page(i)
             # Render page at preview resolution
             pix = page.get_pixmap(
                 matrix=pymupdf.Matrix(1, 1)

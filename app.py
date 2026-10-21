@@ -10,7 +10,12 @@ import pymupdf
 import stripe
 from werkzeug.exceptions import RequestEntityTooLarge
 
-from services.pdf_service import PdfPageLimitError, PdfService
+from services.pdf_service import (
+    MAX_PAGE_PIXELS,
+    MAX_TOTAL_PIXELS,
+    PdfPageLimitError,
+    PdfService,
+)
 from services.image_service import ImageProcessor
 from services.page_store import PageStore
 from utils.converters import cv_to_pil, pil_to_b64, pil_to_cv
@@ -43,6 +48,8 @@ ENHANCEMENT_RANGES = {
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 app.config["MAX_PDF_PAGES"] = MAX_PDF_PAGES
+app.config["MAX_PAGE_PIXELS"] = MAX_PAGE_PIXELS
+app.config["MAX_TOTAL_PIXELS"] = MAX_TOTAL_PIXELS
 app.config["PAYMENTS_ENABLED"] = os.environ.get("PAYMENTS_ENABLED", "").lower() == "true"
 app.config["STRIPE_SECRET_KEY"] = os.environ.get("STRIPE_SECRET_KEY")
 app.config["STRIPE_WEBHOOK_SECRET"] = os.environ.get("STRIPE_WEBHOOK_SECRET")
@@ -282,6 +289,8 @@ def load_pdf():
         pages = PdfService.load_pdf(
             io.BytesIO(source_pdf),
             max_pages=app.config["MAX_PDF_PAGES"],
+            max_page_pixels=app.config["MAX_PAGE_PIXELS"],
+            max_total_pixels=app.config["MAX_TOTAL_PIXELS"],
         )
     except PdfPageLimitError as error:
         return jsonify({"error": str(error)}), 400

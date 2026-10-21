@@ -92,6 +92,39 @@ def test_load_pdf_rejects_page_count_above_limit():
         PdfService.load_pdf(io.BytesIO(make_text_pdf()), max_pages=1)
 
 
+def test_load_pdf_rejects_page_above_pixel_limit_before_rendering(monkeypatch):
+    document = pymupdf.open()
+    document.new_page(width=5000, height=5000)
+    monkeypatch.setattr(
+        pymupdf.Page,
+        "get_pixmap",
+        lambda *args, **kwargs: pytest.fail("Oversized page was rendered."),
+    )
+
+    with pytest.raises(
+        PdfPageLimitError,
+        match="page 1 exceeds the maximum allowed size of 20000000 pixels",
+    ):
+        PdfService.load_pdf(io.BytesIO(document.tobytes()))
+
+
+def test_load_pdf_rejects_document_above_total_pixel_limit_before_rendering(monkeypatch):
+    document = pymupdf.open()
+    for _ in range(6):
+        document.new_page(width=4000, height=5000)
+    monkeypatch.setattr(
+        pymupdf.Page,
+        "get_pixmap",
+        lambda *args, **kwargs: pytest.fail("Oversized document was rendered."),
+    )
+
+    with pytest.raises(
+        PdfPageLimitError,
+        match="maximum allowed total of 100000000 pixels",
+    ):
+        PdfService.load_pdf(io.BytesIO(document.tobytes()))
+
+
 def test_page_size_info_detects_mixed_sizes_and_most_common_format():
     document = pymupdf.open()
     document.new_page(width=200, height=300)

@@ -85,6 +85,7 @@ def configure_payments(monkeypatch):
 def test_home_page(client):
     response = client.get("/")
     assert response.status_code == 200
+    assert b"Editing a page rasterizes it" in response.data
     assert b"ca-pub-2211245923059324" in response.data
     assert b'data-ad-slot="4918423712"' in response.data
     assert b'id="ad-container"' in response.data
@@ -143,6 +144,21 @@ def test_load_pdf_rejects_more_than_configured_page_limit(client, monkeypatch):
 
     assert response.status_code == 400
     assert response.get_json()["error"] == "PDF exceeds the maximum allowed page count of 1."
+
+
+def test_load_pdf_rejects_page_over_pixel_limit(client, monkeypatch):
+    monkeypatch.setitem(app.config, "MAX_PAGE_PIXELS", 100)
+    document = pymupdf.open()
+    document.new_page(width=20, height=20)
+
+    response = client.post(
+        "/load_pdf",
+        data={"pdf": (io.BytesIO(document.tobytes()), "large-page.pdf")},
+        content_type="multipart/form-data",
+    )
+
+    assert response.status_code == 400
+    assert "page 1 exceeds the maximum allowed size of 100 pixels" in response.get_json()["error"]
 
 
 def test_align_pages_normalizes_all_pages_and_supports_undo(client):

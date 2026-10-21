@@ -28,23 +28,26 @@ Built with **Flask**, **PyMuPDF**, **OpenCV**, and **Pillow**.
 - Gunicorn (VPS deployment)
 
 ## Deployment
-The GitHub Actions workflow runs tests for pull requests targeting `main` and
-pushes to `main`. A push to `main` is deployed to the VPS over SSH only after
-the tests pass. Configure the `SSH_PRIVATE_KEY`, `SSH_USER`, and `SSH_HOST`
-repository secrets for deployment. The VPS must have the repository checked
-out at `/var/www/pdfcleaner` and a `pdfcleaner` systemd service configured.
+The GitHub Actions workflow tests Python 3.10 and 3.14 for pull requests targeting
+`main` and pushes to `main`. A push to `main` is deployed to the VPS over SSH
+only after the tests pass. Configure the `SSH_PRIVATE_KEY`, `SSH_USER`,
+`SSH_HOST`, and `SSH_KNOWN_HOSTS` repository secrets for deployment.
+`SSH_KNOWN_HOSTS` must contain the verified host key line for the VPS (obtain
+and verify its fingerprint through a trusted channel). The VPS must have the
+repository checked out at `/var/www/pdfcleaner` and a `pdfcleaner` systemd
+service configured.
 
-Install dependencies with `python -m pip install -r requirements.txt` and run
-the application with `gunicorn app:app`.
+Install the pinned dependencies with `python -m pip install -r requirements.txt`
+and run the application with `gunicorn app:app`.
 
 ## Storage
 - Session state is stored in SQLite at `instance/pdf_state.sqlite3` by default.
 - Set `FLASK_SECRET_KEY` to a stable secret in production. `PAGE_STORE_PATH` can override the database path.
-- Uploads are limited to 200 MB and 100 pages.
+- Uploads are limited to 200 MB and 100 pages. At the 1-pixel-per-point preview scale, a page may contain at most 20 million pixels and a document at most 100 million pixels; larger PDFs are rejected before page rendering.
 - Mixed page sizes are detected after upload. Users can align pages to the most common size or keep the original sizes; alignment preserves portrait/landscape orientation, fits and centers content without cropping.
 - Payment controls remain disabled unless `PAYMENTS_ENABLED=true` and Stripe API, webhook, and HTTPS public URL settings are configured. Checkout uses a fixed inline price of €0.99 per PDF.
 - A responsive Google AdSense display unit is shown in the editor sidebar after AdSense serves it. The publisher consent message must be configured and published in AdSense; ads may not appear until site/ad-unit review and consent settings are effective.
-- Unchanged pages retain their original PDF content. Edited pages are exported as JPEG images, so their text/vector content is rasterized.
+- Unchanged pages retain their original PDF content. Edited pages are exported as JPEG images, so their text/vector content is rasterized; the editor displays this warning before editing.
 - Multiple workers on one host can share the SQLite database. Multiple app instances need a shared database and storage location.
 
 ## Tests

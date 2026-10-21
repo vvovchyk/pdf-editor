@@ -158,6 +158,15 @@ button:hover {
     font-size: 0.9rem;
 }
 
+#rasterizationNotice {
+    max-width: 600px;
+    padding: 10px;
+    border-left: 3px solid #b28b35;
+    background: #181818;
+    color: #ddd;
+    font-size: 0.9rem;
+}
+
 #site-footer a {
     color: inherit;
 }

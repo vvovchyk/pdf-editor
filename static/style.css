@@ -46,10 +46,10 @@ body.dark {
     position: absolute;
     z-index: 1;
     box-sizing: border-box;
-    border: 2px solid #ff3b30;
+    border: 2px solid #00d26a;
     outline: 1px solid #fff;
     box-shadow: 0 0 0 3px #111;
-    background: rgb(255 59 48 / 16%);
+    background: transparent;
     pointer-events: none;
 }
 

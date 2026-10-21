@@ -77,17 +77,27 @@ def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     assert image_box is not None
 
     page.get_by_role("button", name="Select Area").click()
-    page.mouse.move(image_box["x"] + 20, image_box["y"] + 30)
+    start_x = image_box["x"] + 20
+    start_y = image_box["y"] + 30
+    end_x = image_box["x"] + 120
+    end_y = image_box["y"] + 130
+    page.mouse.move(start_x, start_y)
     page.mouse.down()
-    page.mouse.move(image_box["x"] + 120, image_box["y"] + 130)
-    page.mouse.up()
+    page.mouse.move(end_x, end_y)
 
     selection_box = page.locator("#selectionBox")
+    expect(selection_box).to_be_visible()
+    assert selection_box.evaluate("(element) => element.style.left") == "20px"
+    assert selection_box.evaluate("(element) => element.style.top") == "30px"
+    assert selection_box.evaluate("(element) => element.style.width") == "100px"
+    assert selection_box.evaluate("(element) => element.style.height") == "100px"
+    page.mouse.up()
+
     expect(selection_box).to_be_visible()
     expect(page.locator("#clearAreaBtn")).to_be_enabled()
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).borderTopColor"
-    ) == "rgb(255, 59, 48)"
+    ) == "rgb(0, 210, 106)"
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).outlineColor"
     ) == "rgb(255, 255, 255)"

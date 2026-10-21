@@ -490,14 +490,20 @@ pageImage.addEventListener("pointerdown", event => {
     const point = imagePoint(event);
     pointerStart = point;
     selectedArea = null;
-    updateSelectionBox(point, point);
+    updateSelectionBox(
+        { x: point.displayX, y: point.displayY },
+        { x: point.displayX, y: point.displayY }
+    );
     pageImage.setPointerCapture(event.pointerId);
 });
 
 pageImage.addEventListener("pointermove", event => {
     if (!pointerStart) return;
     const point = imagePoint(event);
-    updateSelectionBox(pointerStart, point);
+    updateSelectionBox(
+        { x: pointerStart.displayX, y: pointerStart.displayY },
+        { x: point.displayX, y: point.displayY }
+    );
 });
 
 pageImage.addEventListener("pointerup", async event => {

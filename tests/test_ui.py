@@ -75,7 +75,6 @@ def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     image = page.locator("#pageImage")
     image_box = image.bounding_box()
     assert image_box is not None
-
     page.get_by_role("button", name="Select Area").click()
     start_x = image_box["x"] + 20
     start_y = image_box["y"] + 30
@@ -133,16 +132,18 @@ def test_selection_works_after_zoom_and_viewer_scroll(browser, app_url):
     image = page.locator("#pageImage")
     image_box = image.bounding_box()
     assert image_box is not None
+    viewer.evaluate("(element) => { element.scrollLeft = 200; }")
+    image_box = image.bounding_box()
     page.get_by_role("button", name="Select Area").click()
-    page.mouse.move(image_box["x"] + 700, image_box["y"] + 350)
+    page.mouse.move(image_box["x"] + 500, image_box["y"] + 350)
     page.mouse.down()
-    page.mouse.move(image_box["x"] + 550, image_box["y"] + 150)
+    page.mouse.move(image_box["x"] + 300, image_box["y"] + 150)
 
     selection_box = page.locator("#selectionBox")
     expect(selection_box).to_be_visible()
-    assert selection_box.evaluate("(element) => element.style.left") == "550px"
+    assert selection_box.evaluate("(element) => element.style.left") == "300px"
     assert selection_box.evaluate("(element) => element.style.top") == "150px"
-    assert selection_box.evaluate("(element) => element.style.width") == "150px"
+    assert selection_box.evaluate("(element) => element.style.width") == "200px"
     assert selection_box.evaluate("(element) => element.style.height") == "200px"
     page.mouse.up()
 
@@ -174,7 +175,7 @@ def test_selection_auto_scrolls_viewer_during_drag(browser, app_url):
     page.get_by_role("button", name="Select Area").click()
     page.mouse.move(image_box["x"] + 100, image_box["y"] + 100)
     page.mouse.down()
-    page.mouse.move(image_box["x"] + 100, viewer_box["y"] + viewer_box["height"] - 10)
+    page.mouse.move(image_box["x"] + 200, viewer_box["y"] + viewer_box["height"] - 10)
 
     page.wait_for_function(
         "document.getElementById('viewer').scrollTop > 0"
@@ -212,6 +213,19 @@ def test_escape_and_pointer_cancel_discard_area_selection(browser, app_url):
     expect(selection_box).to_be_hidden()
     expect(page.locator("#clearAreaBtn")).to_be_disabled()
     page.mouse.up()
+    page.close()
+
+
+def test_click_without_drag_does_not_create_empty_selection(browser, app_url):
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    load_pdf(page, app_url)
+    image_box = page.locator("#pageImage").bounding_box()
+    assert image_box is not None
+    page.get_by_role("button", name="Select Area").click()
+    page.mouse.click(image_box["x"] + 20, image_box["y"] + 30)
+
+    expect(page.locator("#selectionBox")).to_be_hidden()
+    expect(page.locator("#clearAreaBtn")).to_be_disabled()
     page.close()
 
 

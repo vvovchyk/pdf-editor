@@ -5,12 +5,15 @@ let currentPage = 0;
 let activeTool = null;
 let selectedArea = null;
 let pointerStart = null;
+let pointerPosition = null;
+let selectionFrame = null;
 let zoom = 100;
 let lastAction = null;
 const dirtyPages = new Set();
 
 const pageImage = document.getElementById("pageImage");
 const selectionBox = document.getElementById("selectionBox");
+const viewer = document.getElementById("viewer");
 const alignmentPrompt = document.getElementById("alignmentPrompt");
 const paymentPrompt = document.getElementById("paymentPrompt");
 let billingState = { enabled: false, paid: false };
@@ -152,6 +155,65 @@ function imagePoint(event) {
         displayX: x,
         displayY: y
     };
+}
+
+function updateSelectionFromPointer(clientX, clientY) {
+    const point = imagePoint({ clientX, clientY });
+    updateSelectionBox(
+        { x: pointerStart.displayX, y: pointerStart.displayY },
+        { x: point.displayX, y: point.displayY }
+    );
+}
+
+function autoScrollStep(position, start, end) {
+    const edgeSize = 36;
+    const maxStep = 18;
+    if (position < start + edgeSize) {
+        return -Math.min(maxStep, Math.ceil((start + edgeSize - position) / 3));
+    }
+    if (position > end - edgeSize) {
+        return Math.min(maxStep, Math.ceil((position - (end - edgeSize)) / 3));
+    }
+    return 0;
+}
+
+function continueSelectionDrag() {
+    if (!pointerStart || !pointerPosition) {
+        selectionFrame = null;
+        return;
+    }
+
+    const bounds = viewer.getBoundingClientRect();
+    viewer.scrollLeft += autoScrollStep(
+        pointerPosition.x,
+        bounds.left,
+        bounds.right
+    );
+    viewer.scrollTop += autoScrollStep(
+        pointerPosition.y,
+        bounds.top,
+        bounds.bottom
+    );
+    updateSelectionFromPointer(pointerPosition.x, pointerPosition.y);
+    selectionFrame = window.requestAnimationFrame(continueSelectionDrag);
+}
+
+function stopSelectionDrag() {
+    pointerStart = null;
+    pointerPosition = null;
+    if (selectionFrame !== null) {
+        window.cancelAnimationFrame(selectionFrame);
+        selectionFrame = null;
+    }
+}
+
+function cancelSelection() {
+    stopSelectionDrag();
+    selectedArea = null;
+    activeTool = null;
+    selectionBox.hidden = true;
+    pageImage.classList.remove("selecting");
+    setSelectionActionsEnabled(false);
 }
 
 function setTool(tool) {
@@ -485,38 +547,43 @@ function startCrop() { setTool("crop"); }
 function startSelection() { setTool("selection"); }
 
 pageImage.addEventListener("pointerdown", event => {
-    if (!activeTool || pages.length === 0) return;
+    if (!activeTool || pages.length === 0 || !event.isPrimary || event.button !== 0) return;
     event.preventDefault();
     const point = imagePoint(event);
     pointerStart = point;
+    pointerPosition = { x: event.clientX, y: event.clientY };
     selectedArea = null;
     updateSelectionBox(
         { x: point.displayX, y: point.displayY },
         { x: point.displayX, y: point.displayY }
     );
     pageImage.setPointerCapture(event.pointerId);
+    selectionFrame = window.requestAnimationFrame(continueSelectionDrag);
 });
 
 pageImage.addEventListener("pointermove", event => {
     if (!pointerStart) return;
-    const point = imagePoint(event);
-    updateSelectionBox(
-        { x: pointerStart.displayX, y: pointerStart.displayY },
-        { x: point.displayX, y: point.displayY }
-    );
+    pointerPosition = { x: event.clientX, y: event.clientY };
+    updateSelectionFromPointer(event.clientX, event.clientY);
 });
 
 pageImage.addEventListener("pointerup", async event => {
     if (!pointerStart) return;
     const end = imagePoint(event);
+    const start = pointerStart;
+    stopSelectionDrag();
+    if (start.x === end.x || start.y === end.y) {
+        cancelSelection();
+        return;
+    }
     selectedArea = {
-        start: { x: pointerStart.x, y: pointerStart.y },
+        start: { x: start.x, y: start.y },
         end: { x: end.x, y: end.y }
     };
-    const displayStart = { x: pointerStart.displayX, y: pointerStart.displayY };
-    const displayEnd = { x: end.displayX, y: end.displayY };
-    pointerStart = null;
-    updateSelectionBox(displayStart, displayEnd);
+    updateSelectionBox(
+        { x: start.displayX, y: start.displayY },
+        { x: end.displayX, y: end.displayY }
+    );
 
     if (activeTool === "crop") {
         try {
@@ -534,6 +601,13 @@ pageImage.addEventListener("pointerup", async event => {
         activeTool = null;
         pageImage.classList.remove("selecting");
         setSelectionActionsEnabled(true);
+    }
+});
+
+pageImage.addEventListener("pointercancel", cancelSelection);
+window.addEventListener("keydown", event => {
+    if (event.key === "Escape" && (pointerStart || activeTool || selectedArea)) {
+        cancelSelection();
     }
 });
 

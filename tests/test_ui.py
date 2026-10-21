@@ -101,6 +101,9 @@ def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).outlineColor"
     ) == "rgb(255, 255, 255)"
+    assert selection_box.evaluate(
+        "(element) => getComputedStyle(element).backgroundColor"
+    ) == "rgba(0, 0, 0, 0)"
 
     requests = []
     page.on(
@@ -115,6 +118,100 @@ def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     assert requests[0]["page"] == 0
     assert requests[0]["start"]["x"] < requests[0]["end"]["x"]
     assert requests[0]["start"]["y"] < requests[0]["end"]["y"]
+    page.close()
+
+
+def test_selection_works_after_zoom_and_viewer_scroll(browser, app_url):
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    load_pdf(page, app_url)
+    page.locator('button[onclick="zoomIn()"]').click(click_count=10)
+
+    viewer = page.locator("#viewer")
+    viewer.evaluate("(element) => { element.scrollTop = 100; }")
+    assert viewer.evaluate("(element) => element.scrollTop") > 0
+
+    image = page.locator("#pageImage")
+    image_box = image.bounding_box()
+    assert image_box is not None
+    page.get_by_role("button", name="Select Area").click()
+    page.mouse.move(image_box["x"] + 700, image_box["y"] + 350)
+    page.mouse.down()
+    page.mouse.move(image_box["x"] + 550, image_box["y"] + 150)
+
+    selection_box = page.locator("#selectionBox")
+    expect(selection_box).to_be_visible()
+    assert selection_box.evaluate("(element) => element.style.left") == "550px"
+    assert selection_box.evaluate("(element) => element.style.top") == "150px"
+    assert selection_box.evaluate("(element) => element.style.width") == "150px"
+    assert selection_box.evaluate("(element) => element.style.height") == "200px"
+    page.mouse.up()
+
+    requests = []
+    page.on(
+        "request",
+        lambda request: requests.append(json.loads(request.post_data))
+        if request.url.endswith("/clear_area")
+        else None,
+    )
+    page.get_by_role("button", name="Clear Selected Area").click()
+    expect(selection_box).to_be_hidden()
+    assert len(requests) == 1
+    assert requests[0]["start"]["x"] > requests[0]["end"]["x"]
+    assert requests[0]["start"]["y"] > requests[0]["end"]["y"]
+    page.close()
+
+
+def test_selection_auto_scrolls_viewer_during_drag(browser, app_url):
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    load_pdf(page, app_url)
+    page.locator('button[onclick="zoomIn()"]').click(click_count=10)
+
+    viewer = page.locator("#viewer")
+    viewer_box = viewer.bounding_box()
+    image_box = page.locator("#pageImage").bounding_box()
+    assert viewer_box is not None
+    assert image_box is not None
+    page.get_by_role("button", name="Select Area").click()
+    page.mouse.move(image_box["x"] + 100, image_box["y"] + 100)
+    page.mouse.down()
+    page.mouse.move(image_box["x"] + 100, viewer_box["y"] + viewer_box["height"] - 10)
+
+    page.wait_for_function(
+        "document.getElementById('viewer').scrollTop > 0"
+    )
+    assert viewer.evaluate("(element) => element.scrollTop") > 0
+    page.mouse.up()
+    expect(page.locator("#selectionBox")).to_be_visible()
+    page.close()
+
+
+def test_escape_and_pointer_cancel_discard_area_selection(browser, app_url):
+    page = browser.new_page(viewport={"width": 1280, "height": 900})
+    load_pdf(page, app_url)
+    image = page.locator("#pageImage")
+    image_box = image.bounding_box()
+    assert image_box is not None
+    selection_box = page.locator("#selectionBox")
+
+    page.get_by_role("button", name="Select Area").click()
+    page.mouse.move(image_box["x"] + 20, image_box["y"] + 30)
+    page.mouse.down()
+    page.mouse.move(image_box["x"] + 120, image_box["y"] + 130)
+    page.keyboard.press("Escape")
+    expect(selection_box).to_be_hidden()
+    expect(page.locator("#clearAreaBtn")).to_be_disabled()
+    page.mouse.up()
+
+    page.get_by_role("button", name="Select Area").click()
+    image_box = image.bounding_box()
+    assert image_box is not None
+    page.mouse.move(image_box["x"] + 20, image_box["y"] + 30)
+    page.mouse.down()
+    page.mouse.move(image_box["x"] + 120, image_box["y"] + 130)
+    image.dispatch_event("pointercancel")
+    expect(selection_box).to_be_hidden()
+    expect(page.locator("#clearAreaBtn")).to_be_disabled()
+    page.mouse.up()
     page.close()
 
 

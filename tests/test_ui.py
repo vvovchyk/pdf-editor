@@ -96,7 +96,7 @@ def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     expect(page.locator("#clearAreaBtn")).to_be_enabled()
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).borderTopColor"
-    ) == "rgb(0, 210, 106)"
+    ) == "rgb(201, 241, 220)"
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).outlineColor"
     ) == "rgb(255, 255, 255)"

@@ -40,6 +40,13 @@ service configured.
 Install the pinned dependencies with `python -m pip install -r requirements.txt`
 and run the application with `gunicorn app:app`.
 
+### Serving under a URL prefix
+To serve the editor at `https://vovchak.io/pdf-cleaner/` behind Nginx, proxy
+`/pdf-cleaner/` to the app with the URI suffix stripped and set
+`X-Forwarded-Prefix: /pdf-cleaner`. Keep Gunicorn bound to localhost so only
+the trusted Nginx proxy can supply this header. The editor uses this prefix for
+its static assets and API requests; the existing root route remains unchanged.
+
 ## Storage
 - Session state is stored in SQLite at `instance/pdf_state.sqlite3` by default.
 - Set `FLASK_SECRET_KEY` to a stable secret in production. `PAGE_STORE_PATH` can override the database path.
@@ -60,8 +67,9 @@ Create and verify a Stripe account. The application creates a fixed one-time
 EUR €0.99 Checkout line item for unlocking one PDF. Add these server environment
 variables: `PAYMENTS_ENABLED=true`, `STRIPE_SECRET_KEY`,
 `STRIPE_WEBHOOK_SECRET`, and
-`PUBLIC_BASE_URL=https://pdfcleaner.vovchak.io`.
-Register `https://pdfcleaner.vovchak.io/billing/webhook` in Stripe for the
+`PUBLIC_BASE_URL` to the public editor URL, such as
+`https://vovchak.io/pdf-cleaner`.
+Register `<PUBLIC_BASE_URL>/billing/webhook` in Stripe for the
 `checkout.session.completed` and `checkout.session.async_payment_succeeded`
 events. Store secret values only in the VPS or deployment secret manager,
 never in source control. Payment restrictions remain off until all required

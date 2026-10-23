@@ -91,6 +91,15 @@ def test_home_page(client):
     assert b'id="ad-container"' in response.data
 
 
+def test_home_page_uses_reverse_proxy_prefix(client):
+    response = client.get("/", headers={"X-Forwarded-Prefix": "/pdf-cleaner"})
+
+    assert response.status_code == 200
+    assert b'data-app-base="/pdf-cleaner"' in response.data
+    assert b'href="/pdf-cleaner/static/style.css?v=9"' in response.data
+    assert b'src="/pdf-cleaner/static/script.js?v=7"' in response.data
+
+
 def test_load_pdf_returns_loaded_pages(client, monkeypatch):
     page = Image.new("RGB", (2, 2), "white")
     monkeypatch.setattr(

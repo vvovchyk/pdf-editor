@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-app-base="{{ request.script_root }}">
 <head>
     <meta charset="UTF-8">
     <title>PDF Cleaner Advanced</title>
-    <link rel="stylesheet" href="/static/style.css?v=9">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=9">
     <script async
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2211245923059324"
             crossorigin="anonymous"></script>
@@ -155,6 +155,6 @@
     <a href="https://vovchak.io/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
 </footer>
 
-<script src="/static/script.js?v=7"></script>
+<script src="{{ url_for('static', filename='script.js') }}?v=7"></script>
 </body>
 </html>

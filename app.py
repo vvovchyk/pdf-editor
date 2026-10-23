@@ -9,6 +9,7 @@ from flask import Flask, jsonify, render_template, request, send_file, session
 import pymupdf
 import stripe
 from werkzeug.exceptions import RequestEntityTooLarge
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from services.pdf_service import (
     MAX_PAGE_PIXELS,
@@ -46,6 +47,7 @@ ENHANCEMENT_RANGES = {
 }
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 app.config["MAX_PDF_PAGES"] = MAX_PDF_PAGES
 app.config["MAX_PAGE_PIXELS"] = MAX_PAGE_PIXELS

@@ -16,7 +16,12 @@ const selectionBox = document.getElementById("selectionBox");
 const viewer = document.getElementById("viewer");
 const alignmentPrompt = document.getElementById("alignmentPrompt");
 const paymentPrompt = document.getElementById("paymentPrompt");
+const appBasePath = document.documentElement.dataset.appBase || "";
 let billingState = { enabled: false, paid: false };
+
+function appUrl(path) {
+    return `${appBasePath}${path}`;
+}
 
 async function responsePreview(response) {
     const data = await response.json();
@@ -63,7 +68,7 @@ function showPaymentPrompt(message) {
 }
 
 async function refreshBillingStatus() {
-    const response = await fetch("/billing/status");
+    const response = await fetch(appUrl("/billing/status"));
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || "Could not check payment status.");
     updateBilling(data);
@@ -77,7 +82,7 @@ document.getElementById("unlockDocumentBtn").addEventListener("click", async () 
     }
     checkoutWindow.document.title = "Opening secure checkout";
     try {
-        const response = await fetch("/billing/checkout", { method: "POST" });
+        const response = await fetch(appUrl("/billing/checkout"), { method: "POST" });
         const data = await response.json();
         if (!response.ok) throw new Error(data.error || "Could not start checkout.");
         checkoutWindow.location = data.url;
@@ -242,12 +247,12 @@ async function editPage(action, pageIndex) {
     let response;
     if (action.type === "enhance") {
         response = await fetch(
-            `/enhance/${sourceIndexes[pageIndex]}/${action.mode}/${encodeURIComponent(action.value)}`,
+            appUrl(`/enhance/${sourceIndexes[pageIndex]}/${action.mode}/${encodeURIComponent(action.value)}`),
             { method: "POST" }
         );
     } else if (action.type === "rotate") {
         response = await fetch(
-            `/rotate/${sourceIndexes[pageIndex]}/${action.direction}`,
+            appUrl(`/rotate/${sourceIndexes[pageIndex]}/${action.direction}`),
             { method: "POST" }
         );
     } else {
@@ -265,7 +270,7 @@ async function applyAction(action, pageIndexes) {
                 pages: pageIndexes.map(index => sourceIndexes[index]),
                 ...action
             };
-            const response = await fetch("/batch_action", {
+            const response = await fetch(appUrl("/batch_action"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(payload)
@@ -308,7 +313,7 @@ document.getElementById("pdfFile").addEventListener("change", async function () 
     formData.append("pdf", file);
 
     try {
-        const res = await fetch("/load_pdf", { method: "POST", body: formData });
+        const res = await fetch(appUrl("/load_pdf"), { method: "POST", body: formData });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Could not load PDF.");
         pages = data.pages;
@@ -332,7 +337,7 @@ document.getElementById("pdfFile").addEventListener("change", async function () 
 
 document.getElementById("applyAlignmentBtn").addEventListener("click", async () => {
     try {
-        const response = await fetch("/align_pages", { method: "POST" });
+        const response = await fetch(appUrl("/align_pages"), { method: "POST" });
         const data = await response.json();
         if (!response.ok) {
             throw new Error(data.error || "Could not align pages.");
@@ -509,14 +514,14 @@ function updatePageInfo() {
 // UNDO / REDO
 async function undo() {
     try {
-        const res = await fetch(`/undo/${sourceIndexes[currentPage]}`, { method: "POST" });
+        const res = await fetch(appUrl(`/undo/${sourceIndexes[currentPage]}`), { method: "POST" });
         setPreview(await responsePreview(res));
     } catch (error) { showError(error); }
 }
 
 async function redo() {
     try {
-        const res = await fetch(`/redo/${sourceIndexes[currentPage]}`, { method: "POST" });
+        const res = await fetch(appUrl(`/redo/${sourceIndexes[currentPage]}`), { method: "POST" });
         setPreview(await responsePreview(res));
     } catch (error) { showError(error); }
 }
@@ -587,7 +592,7 @@ pageImage.addEventListener("pointerup", async event => {
 
     if (activeTool === "crop") {
         try {
-            const response = await fetch("/crop_page", {
+            const response = await fetch(appUrl("/crop_page"), {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ page: sourceIndexes[currentPage], ...selectedArea })
@@ -626,8 +631,8 @@ async function applySelection(endpoint) {
     } catch (error) { showError(error); }
 }
 
-function applySelectionEnhance() { return applySelection("/selection_enhance"); }
-function clearSelectedArea() { return applySelection("/clear_area"); }
+function applySelectionEnhance() { return applySelection(appUrl("/selection_enhance")); }
+function clearSelectedArea() { return applySelection(appUrl("/clear_area")); }
 
 function showBefore() {
     if (originalPages[currentPage]) {
@@ -650,7 +655,7 @@ async function savePDF() {
     const quality = document.getElementById("compressSlider").value;
 
     try {
-        const res = await fetch("/save_pdf", {
+        const res = await fetch(appUrl("/save_pdf"), {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({

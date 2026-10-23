@@ -1,7 +1,77 @@
 body.dark {
-    background: #222;
-    color: #eee;
+    background: #202923;
+    color: #f4f2ec;
     font-family: Arial, sans-serif;
+}
+
+#suite-header {
+    position: sticky;
+    z-index: 5;
+    top: 0;
+    display: flex;
+    min-height: 64px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px clamp(12px, 3vw, 32px);
+    border-bottom: 1px solid #354139;
+    background: rgb(27 37 31 / 95%);
+    backdrop-filter: blur(14px);
+}
+
+.suite-brand {
+    display: flex;
+    align-items: center;
+    color: #f4f2ec;
+    gap: 9px;
+    text-decoration: none;
+}
+
+.suite-mark {
+    display: grid;
+    width: 36px;
+    height: 36px;
+    place-items: center;
+    border-radius: 12px;
+    background: #c9f1dc;
+    color: #37785e;
+    font-size: 22px;
+}
+
+.suite-brand strong,
+.suite-brand small {
+    display: block;
+}
+
+.suite-brand strong {
+    font-size: 13px;
+    letter-spacing: -.04em;
+}
+
+.suite-brand small {
+    margin-top: 2px;
+    color: #aebbb1;
+    font-size: 10px;
+}
+
+#suite-header nav {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+#suite-header nav a {
+    padding: 8px 10px;
+    border-radius: 9px;
+    color: #c3cec5;
+    font-size: 11px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+#suite-header nav a:hover,
+#suite-header nav a.current {
+    background: #2b4034;
+    color: #c9f1dc;
 }
 
 #load-section {
@@ -46,7 +116,7 @@ body.dark {
     position: absolute;
     z-index: 1;
     box-sizing: border-box;
-    border: 2px solid #00d26a;
+    border: 2px solid #c9f1dc;
     outline: 1px solid #fff;
     box-shadow: 0 0 0 3px #111;
     background: transparent;
@@ -106,7 +176,7 @@ body.dark {
 }
 
 .page-thumb.active {
-    border-color: #00aaff;
+    border-color: #c9f1dc;
 }
 
 #thumbnails {
@@ -153,9 +223,13 @@ button:hover {
     background: #444;
 }
 #site-footer {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     padding: 16px;
     text-align: center;
     font-size: 0.9rem;
+    gap: 10px;
 }
 
 #rasterizationNotice {
@@ -168,5 +242,23 @@ button:hover {
 }
 
 #site-footer a {
-    color: inherit;
+    color: #c9f1dc;
+}
+
+@media (max-width: 600px) {
+    #suite-header {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 7px;
+    }
+
+    #suite-header nav {
+        width: 100%;
+        overflow-x: auto;
+    }
+
+    #suite-header nav a {
+        padding: 7px 8px;
+        white-space: nowrap;
+    }
 }

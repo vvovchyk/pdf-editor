@@ -2,13 +2,27 @@
 <html lang="en" data-app-base="{{ request.script_root }}">
 <head>
     <meta charset="UTF-8">
-    <title>PDF Cleaner Advanced</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=9">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#17231e">
+    <title>Sack of Hacks — PDF Cleaner Advanced</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=10">
     <script async
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2211245923059324"
             crossorigin="anonymous"></script>
 </head>
 <body class="dark">
+
+<header id="suite-header">
+    <a class="suite-brand" href="https://vovchak.io/" aria-label="Sack of Hacks home">
+        <span class="suite-mark" aria-hidden="true">✳</span>
+        <span><strong>Sack of Hacks</strong><small>Useful little internet tools</small></span>
+    </a>
+    <nav aria-label="Applications">
+        <a class="current" href="{{ url_for('index') }}" aria-current="page">PDF Cleaner</a>
+        <a href="https://vovchak.io/logo-prep/">Logo Print Prep</a>
+        <a href="https://vovchak.io/">All tools</a>
+    </nav>
+</header>
 
 <!-- LOAD PDF -->
 <section id="load-section">
@@ -153,6 +167,10 @@
 
 <footer id="site-footer">
     <a href="https://vovchak.io/privacy.html" target="_blank" rel="noopener noreferrer">Privacy Policy</a>
+    <span>·</span>
+    <a href="https://vovchak.io/terms.html" target="_blank" rel="noopener noreferrer">Terms</a>
+    <span>·</span>
+    <a href="https://vovchak.io/">Sack of Hacks</a>
 </footer>
 
 <script src="{{ url_for('static', filename='script.js') }}?v=7"></script>

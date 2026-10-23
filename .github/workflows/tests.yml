@@ -50,16 +50,33 @@ jobs:
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
+      - name: Package application
+        run: git archive --format=tar "$GITHUB_SHA" | gzip -n > "$RUNNER_TEMP/pdfcleaner.tar.gz"
+
       - name: Deploy to VPS
         env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
         run: |
           mkdir -p ~/.ssh
           printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
-          ssh -o StrictHostKeyChecking=yes ${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }} "
-            cd /var/www/pdfcleaner &&
-            git pull &&
-            /var/www/pdfcleaner/venv/bin/python -m pip install -r requirements.txt &&
+          archive="/tmp/pdfcleaner-${GITHUB_SHA}.tar.gz"
+          scp -o StrictHostKeyChecking=yes "$RUNNER_TEMP/pdfcleaner.tar.gz" "$SSH_USER@$SSH_HOST:$archive"
+          ssh -o StrictHostKeyChecking=yes "$SSH_USER@$SSH_HOST" "
+            set -e
+            trap 'rm -f \"$archive\"' EXIT
+            tar -xzf \"$archive\" -C /var/www/pdfcleaner
+            /var/www/pdfcleaner/venv/bin/python -m pip install -r /var/www/pdfcleaner/requirements.txt
             systemctl restart pdfcleaner
+            for attempt in \$(seq 1 15); do
+              if curl -fsS http://127.0.0.1:5000/ >/dev/null; then
+                echo 'PDF Cleaner is responding.'
+                exit 0
+              fi
+              sleep 2
+            done
+            systemctl status pdfcleaner --no-pager
+            exit 1
           "

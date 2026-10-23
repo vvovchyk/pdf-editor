@@ -34,8 +34,13 @@ only after the tests pass. Configure the `SSH_PRIVATE_KEY`, `SSH_USER`,
 `SSH_HOST`, and `SSH_KNOWN_HOSTS` repository secrets for deployment.
 `SSH_KNOWN_HOSTS` must contain the verified host key line for the VPS (obtain
 and verify its fingerprint through a trusted channel). The VPS must have the
-repository checked out at `/var/www/pdfcleaner` and a `pdfcleaner` systemd
-service configured.
+application at `/var/www/pdfcleaner` and a `pdfcleaner` systemd service
+configured. Deployments upload an archive of the tested commit rather than
+running `git pull` on the VPS, so local changes in the server checkout cannot
+block a release. The archive replaces tracked application files but leaves
+`.git`, the virtual environment, and runtime data such as `instance/`, `pages/`,
+and `uploads/` untouched. After restarting the service, the workflow checks
+that the app responds locally before reporting a successful deployment.
 
 Install the pinned dependencies with `python -m pip install -r requirements.txt`
 and run the application with `gunicorn app:app`.

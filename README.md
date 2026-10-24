@@ -80,6 +80,15 @@ events. Store secret values only in the VPS or deployment secret manager,
 never in source control. Payment restrictions remain off until all required
 settings are present.
 
+When moving the editor to a different domain or URL prefix, update
+`PUBLIC_BASE_URL` and the Stripe webhook endpoint together. For the current
+deployment, use `https://vovchak.io/pdf-cleaner` and
+`https://vovchak.io/pdf-cleaner/billing/webhook`. A newly created webhook
+endpoint has its own signing secret; update `STRIPE_WEBHOOK_SECRET` to that
+endpoint's `whsec_...` value and restart the service. Restart the service after
+changing `PUBLIC_BASE_URL` as well, then start a new checkout; existing Stripe
+Checkout sessions keep the return URL they were created with.
+
 When enabled, documents above 20 pages or 25 MB, batch edits of more than 3
 pages, and export quality below 70 require one-time unlocking. The document
 entitlement is granted only after a verified Stripe checkout and is scoped to

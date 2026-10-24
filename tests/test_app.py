@@ -78,7 +78,7 @@ def configure_payments(monkeypatch):
     monkeypatch.setitem(
         app.config,
         "PUBLIC_BASE_URL",
-        "https://pdfcleaner.vovchak.io",
+        "https://vovchak.io/pdf-cleaner",
     )
 
 
@@ -584,6 +584,13 @@ def test_checkout_uses_fixed_server_configured_price(client, monkeypatch):
     assert captured["metadata"]["session_id"] == captured["client_reference_id"]
     assert captured["metadata"]["product"] == app_module.PAYMENT_PRODUCT_ID
     assert len(captured["metadata"]["document_hash"]) == 64
+    assert captured["success_url"] == (
+        "https://vovchak.io/pdf-cleaner/billing/success"
+        "?checkout_session_id={CHECKOUT_SESSION_ID}"
+    )
+    assert captured["cancel_url"] == (
+        "https://vovchak.io/pdf-cleaner/?payment=cancelled"
+    )
 
 
 def test_webhook_grants_entitlement_only_after_verified_paid_checkout(

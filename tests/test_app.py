@@ -89,6 +89,7 @@ def test_home_page(client):
     assert b"ca-pub-2211245923059324" in response.data
     assert b'data-ad-slot="4918423712"' in response.data
     assert b'id="ad-container"' in response.data
+    assert b"Remove Shadows" in response.data
     assert b"https://sackofhacks.com/" in response.data
     assert b"https://sackofhacks.com/logo-prep/" in response.data
     assert b"https://vovchak.io/" not in response.data
@@ -484,6 +485,27 @@ def test_enhance_rejects_invalid_mode_or_value(client, monkeypatch, mode, value)
 
     assert response.status_code == 400
     assert "error" in response.get_json()
+
+
+def test_enhance_supports_shadow_removal(client, monkeypatch):
+    page = Image.new("RGB", (2, 2), "white")
+    assert load_test_pages(client, monkeypatch, [page]).status_code == 200
+    processed = []
+
+    def remove_shadows(image):
+        processed.append(image)
+        return Image.new("RGB", image.size, "gray")
+
+    monkeypatch.setattr(
+        app_module.ImageProcessor,
+        "remove_shadows",
+        staticmethod(remove_shadows),
+    )
+    response = client.post("/enhance/0/remove_shadows/1")
+
+    assert response.status_code == 200
+    assert len(processed) == 1
+    assert decode_preview(response).getpixel((0, 0)) == (128, 128, 128)
 
 
 def test_rotate_rejects_invalid_direction(client, monkeypatch):

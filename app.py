@@ -37,6 +37,7 @@ ENHANCEMENT_MODES = {
     "denoise",
     "auto",
     "remove_bg",
+    "remove_shadows",
     "deskew",
 }
 ENHANCEMENT_RANGES = {
@@ -186,6 +187,8 @@ def apply_enhancement(image, mode, value):
         return ImageProcessor.auto(image)
     if mode == "remove_bg":
         return ImageProcessor.remove_bg(image)
+    if mode == "remove_shadows":
+        return ImageProcessor.remove_shadows(image)
     if mode == "deskew":
         return ImageProcessor.deskew(image)
     raise InvalidRequest("Unknown enhancement mode.")

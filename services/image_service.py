@@ -63,6 +63,7 @@ class ImageProcessor:
         
     @staticmethod
     def auto(img):
+        img = ImageProcessor.remove_shadows(img)
         img = ImageEnhance.Contrast(img).enhance(1.4)
         img = ImageEnhance.Sharpness(img).enhance(1.6)
 
@@ -111,7 +112,7 @@ class ImageProcessor:
     def remove_bg(img):
         """Remove light background from scanned page."""
 
-        cv = pil_to_cv(img)
+        cv = pil_to_cv(ImageProcessor.remove_shadows(img))
 
         gray = cv2.cvtColor(cv, cv2.COLOR_BGR2GRAY)
 
@@ -120,6 +121,41 @@ class ImageProcessor:
         cv[thresh == 255] = (255, 255, 255)
 
         return cv_to_pil(cv)
+
+    @staticmethod
+    def remove_shadows(img):
+        """Flatten uneven scan lighting while preserving foreground color."""
+
+        cv = pil_to_cv(img)
+        gray = cv2.cvtColor(cv, cv2.COLOR_BGR2GRAY)
+        height, width = gray.shape
+        scale = min(height, width)
+        kernel_size = max(3, scale // 20)
+        if kernel_size % 2 == 0:
+            kernel_size += 1
+        kernel = cv2.getStructuringElement(
+            cv2.MORPH_ELLIPSE,
+            (kernel_size, kernel_size),
+        )
+        paper = cv2.dilate(gray, kernel)
+        paper = cv2.GaussianBlur(
+            paper,
+            (0, 0),
+            sigmaX=max(1.0, scale / 20),
+            sigmaY=max(1.0, scale / 20),
+        )
+        corrected_gray = cv2.divide(
+            gray,
+            np.maximum(paper, 1),
+            scale=255,
+        )
+        scale_factor = corrected_gray.astype(np.float32) / np.maximum(gray, 1)
+        corrected = np.clip(
+            cv.astype(np.float32) * scale_factor[:, :, np.newaxis],
+            0,
+            255,
+        ).astype(np.uint8)
+        return cv_to_pil(corrected)
         
         
     @staticmethod

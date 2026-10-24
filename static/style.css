@@ -1,7 +1,23 @@
 body.dark {
+    min-height: 100vh;
+    margin: 0;
     background: #202923;
     color: #f4f2ec;
     font-family: Arial, sans-serif;
+}
+
+#pdf-workspace {
+    width: min(1500px, calc(100% - 40px));
+    margin: clamp(24px, 5vh, 56px) auto;
+}
+
+#pdf-editor-card {
+    overflow: hidden;
+    padding: clamp(10px, 2vw, 24px);
+    border: 1px solid #354139;
+    border-radius: 26px;
+    background: linear-gradient(145deg, #29362f, #1d2621);
+    box-shadow: 0 24px 70px rgb(0 0 0 / 24%);
 }
 
 #suite-header {
@@ -75,22 +91,35 @@ body.dark {
 }
 
 #load-section {
-    padding: 10px;
+    padding: 10px 10px 16px;
+    border-bottom: 1px solid #354139;
 }
 
 #nav-section {
-    padding: 10px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    padding: 16px 10px;
+    border-bottom: 1px solid #354139;
+    gap: 8px;
 }
 
 #main-layout {
     display: flex;
-    gap: 20px;
-    padding: 20px;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 10px 10px;
+}
+
+#left-side {
+    min-width: 0;
+    flex: 1;
 }
 
 #viewer {
     border: 1px solid #444;
     padding: 10px;
+    border-radius: 16px;
     background: #111;
     max-height: 80vh;
     overflow: auto;
@@ -132,6 +161,7 @@ body.dark {
     margin: 10px;
     padding: 12px;
     border: 1px solid #777;
+    border-radius: 12px;
     background: #181818;
 }
 
@@ -149,6 +179,7 @@ body.dark {
 .thumbnail-card {
     padding: 4px;
     border: 1px solid #444;
+    border-radius: 10px;
     background: #181818;
 }
 
@@ -190,6 +221,7 @@ body.dark {
     background: #111;
     padding: 20px;
     border: 1px solid #444;
+    border-radius: 16px;
 }
 
 #ad-container {
@@ -215,6 +247,7 @@ button {
     background: #333;
     color: #eee;
     border: 1px solid #555;
+    border-radius: 10px;
     padding: 8px 12px;
     cursor: pointer;
 }
@@ -243,6 +276,28 @@ button:hover {
 
 #site-footer a {
     color: #c9f1dc;
+}
+
+@media (max-width: 760px) {
+    #pdf-workspace {
+        width: calc(100% - 20px);
+        margin: 16px auto;
+    }
+
+    #pdf-editor-card {
+        padding: 8px;
+        border-radius: 20px;
+    }
+
+    #main-layout {
+        flex-direction: column;
+        padding: 14px 4px 4px;
+    }
+
+    #left-side,
+    #controls {
+        width: 100%;
+    }
 }
 
 @media (max-width: 600px) {

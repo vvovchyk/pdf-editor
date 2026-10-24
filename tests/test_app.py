@@ -100,7 +100,7 @@ def test_home_page_uses_reverse_proxy_prefix(client):
 
     assert response.status_code == 200
     assert b'data-app-base="/pdf-cleaner"' in response.data
-    assert b'href="/pdf-cleaner/static/style.css?v=10"' in response.data
+    assert b'href="/pdf-cleaner/static/style.css?v=11"' in response.data
     assert b'src="/pdf-cleaner/static/script.js?v=7"' in response.data
 
 

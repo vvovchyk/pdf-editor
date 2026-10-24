@@ -46,11 +46,24 @@ Install the pinned dependencies with `python -m pip install -r requirements.txt`
 and run the application with `gunicorn app:app`.
 
 ### Serving under a URL prefix
-To serve the editor at `https://vovchak.io/pdf-cleaner/` behind Nginx, proxy
+To serve the editor at `https://sackofhacks.com/pdf-cleaner/` behind Nginx, proxy
 `/pdf-cleaner/` to the app with the URI suffix stripped and set
 `X-Forwarded-Prefix: /pdf-cleaner`. Keep Gunicorn bound to localhost so only
 the trusted Nginx proxy can supply this header. The editor uses this prefix for
 its static assets and API requests; the existing root route remains unchanged.
+
+The suite's public paths are `/`, `/pdf-cleaner/`, and `/logo-prep/`. Configure
+the new domain's DNS and HTTPS certificate, then route each path to the
+corresponding site or application. On the old `vovchak.io` domain, redirect
+requests to the matching path on `https://sackofhacks.com`, preserving query
+strings. Redirect the former `pdfcleaner.vovchak.io` host to
+`https://sackofhacks.com/pdf-cleaner/`, preserving the remaining path and
+query string. Update the Logo Print Prep deployment and the suite's privacy
+and terms pages separately; they are not served by this PDF Cleaner
+repository. Update Stripe's webhook destination directly to
+`https://sackofhacks.com/pdf-cleaner/billing/webhook` rather than relying on a
+redirect, and set the PDF Cleaner service's `PUBLIC_BASE_URL` to
+`https://sackofhacks.com/pdf-cleaner`.
 
 ## Storage
 - Session state is stored in SQLite at `instance/pdf_state.sqlite3` by default.
@@ -73,7 +86,7 @@ EUR €0.99 Checkout line item for unlocking one PDF. Add these server environme
 variables: `PAYMENTS_ENABLED=true`, `STRIPE_SECRET_KEY`,
 `STRIPE_WEBHOOK_SECRET`, and
 `PUBLIC_BASE_URL` to the public editor URL, such as
-`https://vovchak.io/pdf-cleaner`.
+`https://sackofhacks.com/pdf-cleaner`.
 Register `<PUBLIC_BASE_URL>/billing/webhook` in Stripe for the
 `checkout.session.completed` and `checkout.session.async_payment_succeeded`
 events. Store secret values only in the VPS or deployment secret manager,
@@ -82,8 +95,8 @@ settings are present.
 
 When moving the editor to a different domain or URL prefix, update
 `PUBLIC_BASE_URL` and the Stripe webhook endpoint together. For the current
-deployment, use `https://vovchak.io/pdf-cleaner` and
-`https://vovchak.io/pdf-cleaner/billing/webhook`. A newly created webhook
+deployment, use `https://sackofhacks.com/pdf-cleaner` and
+`https://sackofhacks.com/pdf-cleaner/billing/webhook`. A newly created webhook
 endpoint has its own signing secret; update `STRIPE_WEBHOOK_SECRET` to that
 endpoint's `whsec_...` value and restart the service. Restart the service after
 changing `PUBLIC_BASE_URL` as well, then start a new checkout; existing Stripe

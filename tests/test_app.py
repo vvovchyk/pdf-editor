@@ -78,7 +78,7 @@ def configure_payments(monkeypatch):
     monkeypatch.setitem(
         app.config,
         "PUBLIC_BASE_URL",
-        "https://vovchak.io/pdf-cleaner",
+        "https://sackofhacks.com/pdf-cleaner",
     )
 
 
@@ -89,6 +89,9 @@ def test_home_page(client):
     assert b"ca-pub-2211245923059324" in response.data
     assert b'data-ad-slot="4918423712"' in response.data
     assert b'id="ad-container"' in response.data
+    assert b"https://sackofhacks.com/" in response.data
+    assert b"https://sackofhacks.com/logo-prep/" in response.data
+    assert b"https://vovchak.io/" not in response.data
 
 
 def test_home_page_uses_reverse_proxy_prefix(client):
@@ -585,11 +588,11 @@ def test_checkout_uses_fixed_server_configured_price(client, monkeypatch):
     assert captured["metadata"]["product"] == app_module.PAYMENT_PRODUCT_ID
     assert len(captured["metadata"]["document_hash"]) == 64
     assert captured["success_url"] == (
-        "https://vovchak.io/pdf-cleaner/billing/success"
+        "https://sackofhacks.com/pdf-cleaner/billing/success"
         "?checkout_session_id={CHECKOUT_SESSION_ID}"
     )
     assert captured["cancel_url"] == (
-        "https://vovchak.io/pdf-cleaner/?payment=cancelled"
+        "https://sackofhacks.com/pdf-cleaner/?payment=cancelled"
     )
 
 

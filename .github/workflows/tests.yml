@@ -45,13 +45,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install SSH key
         uses: webfactory/ssh-agent@v0.7.0
         with:
           ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Package application
-        run: git archive --format=tar "$GITHUB_SHA" | gzip -n > "$RUNNER_TEMP/pdfcleaner.tar.gz"
+        shell: bash
+        run: |
+          set -euo pipefail
+          archive="$RUNNER_TEMP/pdfcleaner.tar.gz"
+          git archive --format=tar "$GITHUB_SHA" | gzip -n > "$archive"
+          test -s "$archive"
+          tar -tzf "$archive" | grep -Fx app.py >/dev/null
 
       - name: Deploy to VPS
         env:

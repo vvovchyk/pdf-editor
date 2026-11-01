@@ -52,6 +52,28 @@ To serve the editor at `https://sackofhacks.com/pdf-cleaner/` behind Nginx, prox
 the trusted Nginx proxy can supply this header. The editor uses this prefix for
 its static assets and API requests; the existing root route remains unchanged.
 
+### Contact feedback email
+The Sack of Hacks contact form posts to `/pdf-cleaner/feedback`, which is
+handled by this Flask service. Configure SMTP through a systemd override rather
+than committing credentials. Run `systemctl edit pdfcleaner` and add:
+
+```ini
+[Service]
+Environment="FEEDBACK_SMTP_HOST=smtp.example.com"
+Environment="FEEDBACK_SMTP_PORT=587"
+Environment="FEEDBACK_SMTP_USERNAME=your-smtp-user"
+Environment="FEEDBACK_SMTP_PASSWORD=your-smtp-app-password"
+Environment="FEEDBACK_FROM_EMAIL=your-verified-sender@example.com"
+Environment="FEEDBACK_TO_EMAIL=vovchak.v@gmail.com"
+```
+
+Use the SMTP provider's TLS submission endpoint and an app-specific password
+or SMTP credential. Then run `systemctl daemon-reload` and
+`systemctl restart pdfcleaner`. The endpoint accepts same-host form
+submissions, validates message fields, and does not store a separate feedback
+database. The provider and recipient mailbox retain delivered messages under
+their own policies.
+
 The suite's public paths are `/`, `/pdf-cleaner/`, and `/logo-prep/`. Configure
 the new domain's DNS and HTTPS certificate, then route each path to the
 corresponding site or application. On the old `vovchak.io` domain, redirect

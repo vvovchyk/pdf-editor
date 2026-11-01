@@ -82,6 +82,19 @@ def configure_payments(monkeypatch):
     )
 
 
+def configure_feedback(monkeypatch):
+    settings = {
+        "FEEDBACK_SMTP_HOST": "smtp.example.test",
+        "FEEDBACK_SMTP_PORT": 587,
+        "FEEDBACK_SMTP_USERNAME": "feedback@example.test",
+        "FEEDBACK_SMTP_PASSWORD": "test-password",
+        "FEEDBACK_FROM_EMAIL": "feedback@example.test",
+        "FEEDBACK_TO_EMAIL": "vovchak.v@gmail.com",
+    }
+    for key, value in settings.items():
+        monkeypatch.setitem(app.config, key, value)
+
+
 def test_home_page(client):
     response = client.get("/")
     assert response.status_code == 200
@@ -92,7 +105,112 @@ def test_home_page(client):
     assert b"Remove Shadows" in response.data
     assert b"https://sackofhacks.com/" in response.data
     assert b"https://sackofhacks.com/logo-prep/" in response.data
+    assert b"https://sackofhacks.com/converter/image/" in response.data
     assert b"https://vovchak.io/" not in response.data
+
+
+def test_feedback_sends_email_to_configured_mailbox(client, monkeypatch):
+    sent = {}
+
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            assert (host, port, timeout) == ("smtp.example.test", 587, 15)
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *args):
+            return False
+
+        def ehlo(self):
+            pass
+
+        def starttls(self, context):
+            assert context is not None
+
+        def login(self, username, password):
+            assert username == "feedback@example.test"
+            assert password == "test-password"
+
+        def send_message(self, message):
+            sent["message"] = message
+
+    configure_feedback(monkeypatch)
+    monkeypatch.setattr(app_module.smtplib, "SMTP", FakeSMTP)
+
+    response = client.post(
+        "/feedback",
+        data={
+            "name": "Ada",
+            "email": "ada@example.com",
+            "topic": "Bug report",
+            "message": "The converter button is not working.",
+        },
+        headers={"Origin": "http://localhost"},
+    )
+
+    assert response.status_code == 200
+    assert response.get_json()["message"] == "Thanks — your feedback has been sent."
+    assert sent["message"]["To"] == "vovchak.v@gmail.com"
+    assert sent["message"]["Reply-To"] == "ada@example.com"
+    assert "The converter button is not working." in sent["message"].get_content()
+
+
+def test_feedback_rejects_invalid_fields(client):
+    response = client.post(
+        "/feedback",
+        data={
+            "email": "not-an-email",
+            "topic": "Bug report",
+            "message": "Something is wrong.",
+        },
+    )
+
+    assert response.status_code == 400
+    assert response.get_json()["error"] == "Enter a valid email address."
+
+
+def test_feedback_rejects_foreign_origin(client):
+    response = client.post(
+        "/feedback",
+        data={
+            "topic": "Bug report",
+            "message": "Something is wrong.",
+        },
+        headers={"Origin": "https://attacker.example"},
+    )
+
+    assert response.status_code == 403
+
+
+def test_feedback_rejects_honeypot_submission(client):
+    response = client.post(
+        "/feedback",
+        data={
+            "website": "spam.example",
+            "topic": "Bug report",
+            "message": "Something is wrong.",
+        },
+    )
+
+    assert response.status_code == 400
+
+
+def test_feedback_requires_smtp_configuration(client, monkeypatch):
+    for key in (
+        "FEEDBACK_SMTP_HOST",
+        "FEEDBACK_SMTP_USERNAME",
+        "FEEDBACK_SMTP_PASSWORD",
+        "FEEDBACK_FROM_EMAIL",
+    ):
+        monkeypatch.setitem(app.config, key, "")
+
+    response = client.post(
+        "/feedback",
+        data={"topic": "Bug report", "message": "Something is wrong."},
+    )
+
+    assert response.status_code == 503
 
 
 def test_home_page_uses_reverse_proxy_prefix(client):
@@ -100,7 +218,8 @@ def test_home_page_uses_reverse_proxy_prefix(client):
 
     assert response.status_code == 200
     assert b'data-app-base="/pdf-cleaner"' in response.data
-    assert b'href="/pdf-cleaner/static/style.css?v=11"' in response.data
+    assert b'href="https://sackofhacks.com/static/site.css?v=14"' in response.data
+    assert b'href="/pdf-cleaner/static/style.css?v=12"' in response.data
     assert b'src="/pdf-cleaner/static/script.js?v=7"' in response.data
 
 

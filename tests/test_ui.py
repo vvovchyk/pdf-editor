@@ -73,9 +73,9 @@ def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     page = browser.new_page(viewport={"width": 1280, "height": 900})
     load_pdf(page, app_url)
     image = page.locator("#pageImage")
+    page.get_by_role("button", name="Select Area").click()
     image_box = image.bounding_box()
     assert image_box is not None
-    page.get_by_role("button", name="Select Area").click()
     start_x = image_box["x"] + 20
     start_y = image_box["y"] + 30
     end_x = image_box["x"] + 120
@@ -96,10 +96,10 @@ def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     expect(page.locator("#clearAreaBtn")).to_be_enabled()
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).borderTopColor"
-    ) == "rgb(201, 241, 220)"
+    ) == "rgb(239, 119, 94)"
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).outlineColor"
-    ) == "rgb(255, 255, 255)"
+    ) == "rgb(255, 254, 250)"
     assert selection_box.evaluate(
         "(element) => getComputedStyle(element).backgroundColor"
     ) == "rgba(0, 0, 0, 0)"
@@ -130,11 +130,10 @@ def test_selection_works_after_zoom_and_viewer_scroll(browser, app_url):
     assert viewer.evaluate("(element) => element.scrollTop") > 0
 
     image = page.locator("#pageImage")
+    viewer.evaluate("(element) => { element.scrollLeft = 200; }")
+    page.get_by_role("button", name="Select Area").click()
     image_box = image.bounding_box()
     assert image_box is not None
-    viewer.evaluate("(element) => { element.scrollLeft = 200; }")
-    image_box = image.bounding_box()
-    page.get_by_role("button", name="Select Area").click()
     page.mouse.move(image_box["x"] + 500, image_box["y"] + 350)
     page.mouse.down()
     page.mouse.move(image_box["x"] + 300, image_box["y"] + 150)

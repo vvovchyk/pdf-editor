@@ -1,98 +1,42 @@
-body.dark {
+:root {
+    --ink: #202923;
+    --muted: #68716c;
+    --paper: #f4f2ec;
+    --surface: #fffefa;
+    --line: #e5e4dc;
+    --green: #c9f1dc;
+    --green-strong: #37785e;
+    --orange: #ef775e;
+    --shadow: 0 24px 70px rgb(32 41 35 / 9%);
+}
+
+body {
     min-height: 100vh;
     margin: 0;
-    background: #202923;
-    color: #f4f2ec;
-    font-family: Arial, sans-serif;
+    background:
+        radial-gradient(ellipse at 80% 4%, rgb(201 241 220 / 40%), transparent 27rem),
+        var(--paper);
+    color: var(--ink);
+    font-family: "DM Sans", "Segoe UI", sans-serif;
 }
 
 #pdf-workspace {
     width: min(1500px, calc(100% - 40px));
-    margin: clamp(24px, 5vh, 56px) auto;
+    margin: clamp(20px, 3vw, 40px) auto;
 }
 
 #pdf-editor-card {
     overflow: hidden;
     padding: clamp(10px, 2vw, 24px);
-    border: 1px solid #354139;
+    border: 1px solid rgb(32 41 35 / 7%);
     border-radius: 26px;
-    background: linear-gradient(145deg, #29362f, #1d2621);
-    box-shadow: 0 24px 70px rgb(0 0 0 / 24%);
-}
-
-#suite-header {
-    position: sticky;
-    z-index: 5;
-    top: 0;
-    display: flex;
-    min-height: 64px;
-    align-items: center;
-    justify-content: space-between;
-    padding: 8px clamp(12px, 3vw, 32px);
-    border-bottom: 1px solid #354139;
-    background: rgb(27 37 31 / 95%);
-    backdrop-filter: blur(14px);
-}
-
-.suite-brand {
-    display: flex;
-    align-items: center;
-    color: #f4f2ec;
-    gap: 9px;
-    text-decoration: none;
-}
-
-.suite-mark {
-    display: grid;
-    width: 36px;
-    height: 36px;
-    place-items: center;
-    border-radius: 12px;
-    background: #c9f1dc;
-    color: #37785e;
-    font-size: 22px;
-}
-
-.suite-brand strong,
-.suite-brand small {
-    display: block;
-}
-
-.suite-brand strong {
-    font-size: 13px;
-    letter-spacing: -.04em;
-}
-
-.suite-brand small {
-    margin-top: 2px;
-    color: #aebbb1;
-    font-size: 10px;
-}
-
-#suite-header nav {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-#suite-header nav a {
-    padding: 8px 10px;
-    border-radius: 9px;
-    color: #c3cec5;
-    font-size: 11px;
-    font-weight: 600;
-    text-decoration: none;
-}
-
-#suite-header nav a:hover,
-#suite-header nav a.current {
-    background: #2b4034;
-    color: #c9f1dc;
+    background: var(--surface);
+    box-shadow: var(--shadow);
 }
 
 #load-section {
     padding: 10px 10px 16px;
-    border-bottom: 1px solid #354139;
+    border-bottom: 1px solid var(--line);
 }
 
 #nav-section {
@@ -100,7 +44,7 @@ body.dark {
     flex-wrap: wrap;
     align-items: center;
     padding: 16px 10px;
-    border-bottom: 1px solid #354139;
+    border-bottom: 1px solid var(--line);
     gap: 8px;
 }
 
@@ -117,10 +61,10 @@ body.dark {
 }
 
 #viewer {
-    border: 1px solid #444;
+    border: 1px solid #dfe4dc;
     padding: 10px;
     border-radius: 16px;
-    background: #111;
+    background: #e9eee9;
     max-height: 80vh;
     overflow: auto;
 }
@@ -145,9 +89,9 @@ body.dark {
     position: absolute;
     z-index: 1;
     box-sizing: border-box;
-    border: 2px solid #c9f1dc;
-    outline: 1px solid #fff;
-    box-shadow: 0 0 0 3px #111;
+    border: 2px solid var(--orange);
+    outline: 1px solid #fffefa;
+    box-shadow: 0 0 0 3px #dfe4dc;
     background: transparent;
     pointer-events: none;
 }
@@ -160,13 +104,15 @@ body.dark {
 #paymentPrompt {
     margin: 10px;
     padding: 12px;
-    border: 1px solid #777;
+    border: 1px solid #dfe4dc;
     border-radius: 12px;
-    background: #181818;
+    background: #f8faf6;
+    color: var(--ink);
 }
 
 #paymentPrompt {
-    border-color: #b28b35;
+    border-color: #e5c777;
+    background: #fff8e4;
 }
 
 .page-thumb {
@@ -178,9 +124,10 @@ body.dark {
 
 .thumbnail-card {
     padding: 4px;
-    border: 1px solid #444;
+    border: 1px solid #dfe4dc;
     border-radius: 10px;
-    background: #181818;
+    background: #f8faf6;
+    color: var(--ink);
 }
 
 .thumbnail-card[draggable="true"] {
@@ -207,7 +154,7 @@ body.dark {
 }
 
 .page-thumb.active {
-    border-color: #c9f1dc;
+    border-color: var(--green-strong);
 }
 
 #thumbnails {
@@ -218,22 +165,22 @@ body.dark {
 
 #controls {
     width: 300px;
-    background: #111;
+    background: #fbfaf6;
     padding: 20px;
-    border: 1px solid #444;
+    border: 1px solid #e5e4dc;
     border-radius: 16px;
 }
 
 #ad-container {
     margin-top: 24px;
     padding-top: 12px;
-    border-top: 1px solid #444;
+    border-top: 1px solid var(--line);
     overflow: hidden;
 }
 
 #ad-container p {
     margin: 0 0 8px;
-    color: #aaa;
+    color: var(--muted);
     font-size: 0.75rem;
     text-align: center;
     text-transform: uppercase;
@@ -244,38 +191,38 @@ body.dark {
 }
 
 button {
-    background: #333;
-    color: #eee;
-    border: 1px solid #555;
+    background: var(--ink);
+    color: #fffefa;
+    border: 1px solid var(--ink);
     border-radius: 10px;
     padding: 8px 12px;
     cursor: pointer;
 }
 
 button:hover {
-    background: #444;
-}
-#site-footer {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    padding: 16px;
-    text-align: center;
-    font-size: 0.9rem;
-    gap: 10px;
+    background: var(--green-strong);
+    border-color: var(--green-strong);
 }
 
+button:disabled {
+    cursor: not-allowed;
+    opacity: .55;
+}
+
+input[type="range"] {
+    accent-color: var(--green-strong);
+}
+
+#controls h3 {
+    color: var(--ink);
+}
 #rasterizationNotice {
     max-width: 600px;
     padding: 10px;
-    border-left: 3px solid #b28b35;
-    background: #181818;
-    color: #ddd;
+    border-left: 3px solid var(--orange);
+    background: #fff2ed;
+    color: #75483e;
     font-size: 0.9rem;
-}
-
-#site-footer a {
-    color: #c9f1dc;
 }
 
 @media (max-width: 760px) {
@@ -301,19 +248,9 @@ button:hover {
 }
 
 @media (max-width: 600px) {
-    #suite-header {
-        align-items: flex-start;
-        flex-direction: column;
-        gap: 7px;
+    #pdf-workspace {
+        width: calc(100% - 24px);
     }
 
-    #suite-header nav {
-        width: 100%;
-        overflow-x: auto;
-    }
-
-    #suite-header nav a {
-        padding: 7px 8px;
-        white-space: nowrap;
-    }
+    #site-footer { flex-wrap: wrap; font-size: 11px; }
 }

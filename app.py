@@ -3,9 +3,13 @@ import secrets
 import io
 import math
 import hashlib
+import re
+import smtplib
+import ssl
+from email.message import EmailMessage
 from urllib.parse import urlsplit
 
-from flask import Flask, jsonify, render_template, request, send_file, session
+from flask import Flask, current_app, jsonify, render_template, request, send_file, session
 import pymupdf
 import stripe
 from werkzeug.exceptions import RequestEntityTooLarge
@@ -58,6 +62,22 @@ app.config["STRIPE_SECRET_KEY"] = os.environ.get("STRIPE_SECRET_KEY")
 app.config["STRIPE_WEBHOOK_SECRET"] = os.environ.get("STRIPE_WEBHOOK_SECRET")
 app.config["PUBLIC_BASE_URL"] = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 app.config["PAYMENT_PRICE_LABEL"] = "€0.99"
+app.config["FEEDBACK_SMTP_HOST"] = os.environ.get("FEEDBACK_SMTP_HOST", "")
+app.config["FEEDBACK_SMTP_PORT"] = int(os.environ.get("FEEDBACK_SMTP_PORT", "587"))
+app.config["FEEDBACK_SMTP_USERNAME"] = os.environ.get("FEEDBACK_SMTP_USERNAME", "")
+app.config["FEEDBACK_SMTP_PASSWORD"] = os.environ.get("FEEDBACK_SMTP_PASSWORD", "")
+app.config["FEEDBACK_FROM_EMAIL"] = os.environ.get("FEEDBACK_FROM_EMAIL", "")
+app.config["FEEDBACK_TO_EMAIL"] = os.environ.get(
+    "FEEDBACK_TO_EMAIL", "vovchak.v@gmail.com"
+)
+
+FEEDBACK_TOPICS = {
+    "General feedback",
+    "Bug report",
+    "Feature suggestion",
+    "Privacy request",
+}
+FEEDBACK_EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 PAGE_STORE = PageStore(
     os.environ.get("PAGE_STORE_PATH", os.path.join(app.instance_path, "pdf_state.sqlite3"))
@@ -696,6 +716,80 @@ def save_pdf():
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/feedback", methods=["POST"])
+def submit_feedback():
+    if request.content_length and request.content_length > 12_000:
+        return jsonify({"error": "The feedback message is too long."}), 413
+
+    origin = request.headers.get("Origin")
+    if origin:
+        parsed_origin = urlsplit(origin)
+        if parsed_origin.netloc != request.host:
+            return jsonify({"error": "Feedback submissions must come from this site."}), 403
+
+    if request.form.get("website", "").strip():
+        return jsonify({"error": "The feedback form could not be submitted."}), 400
+
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    topic = request.form.get("topic", "").strip()
+    message_text = request.form.get("message", "").strip()
+
+    if len(name) > 100:
+        return jsonify({"error": "Name must be 100 characters or fewer."}), 400
+    if email and (
+        len(email) > 254
+        or not FEEDBACK_EMAIL_PATTERN.fullmatch(email)
+        or any(ord(character) < 32 for character in email)
+    ):
+        return jsonify({"error": "Enter a valid email address."}), 400
+    if topic not in FEEDBACK_TOPICS:
+        return jsonify({"error": "Choose a feedback topic."}), 400
+    if not message_text or len(message_text) > 5000:
+        return jsonify({"error": "Message must be between 1 and 5,000 characters."}), 400
+
+    smtp_host = current_app.config["FEEDBACK_SMTP_HOST"]
+    smtp_username = current_app.config["FEEDBACK_SMTP_USERNAME"]
+    smtp_password = current_app.config["FEEDBACK_SMTP_PASSWORD"]
+    from_email = current_app.config["FEEDBACK_FROM_EMAIL"] or smtp_username
+    to_email = current_app.config["FEEDBACK_TO_EMAIL"]
+    smtp_port = current_app.config["FEEDBACK_SMTP_PORT"]
+
+    if not all((smtp_host, smtp_username, smtp_password, from_email, to_email)):
+        current_app.logger.error("Feedback SMTP is not fully configured.")
+        return jsonify(
+            {"error": "Feedback is temporarily unavailable. Please try again later."}
+        ), 503
+
+    feedback = EmailMessage()
+    feedback["Subject"] = f"Sack of Hacks feedback: {topic}"
+    feedback["From"] = from_email
+    feedback["To"] = to_email
+    if email:
+        feedback["Reply-To"] = email
+    feedback.set_content(
+        f"Topic: {topic}\n"
+        f"Name: {name or 'Not provided'}\n"
+        f"Reply email: {email or 'Not provided'}\n\n"
+        f"{message_text}\n"
+    )
+
+    try:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as smtp:
+            smtp.ehlo()
+            smtp.starttls(context=ssl.create_default_context())
+            smtp.ehlo()
+            smtp.login(smtp_username, smtp_password)
+            smtp.send_message(feedback)
+    except (OSError, smtplib.SMTPException):
+        current_app.logger.exception("Failed to deliver Sack of Hacks feedback.")
+        return jsonify(
+            {"error": "We could not send your feedback. Please try again later."}
+        ), 502
+
+    return jsonify({"message": "Thanks — your feedback has been sent."}), 200
 
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@
     <meta name="theme-color" content="#f4f2ec">
     <title>Sack of Hacks — PDF Cleaner Advanced</title>
     <link rel="icon" href="https://sackofhacks.com/logo.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="https://sackofhacks.com/static/site.css?v=14">
+    <link rel="stylesheet" href="https://sackofhacks.com/static/site.css?v=16">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}?v=12">
     <script async
             src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2211245923059324"
@@ -28,9 +28,11 @@
     <nav class="top-links" aria-label="Applications">
         <a href="https://sackofhacks.com/">All tools</a>
         <a class="current" href="{{ url_for('index') }}" aria-current="page">PDF Cleaner</a>
+        <a href="https://sackofhacks.com/donate.html">Support</a>
         <a href="https://sackofhacks.com/logo-prep/">Logo Print Prep</a>
         <a href="https://sackofhacks.com/converter/image/">Image Converter</a>
         <a href="https://sackofhacks.com/qr-generator/">QR Code Maker</a>
+        <a href="https://sackofhacks.com/converter/audio/">Audio Converter</a>
     </nav>
 </header>
 
@@ -54,7 +56,7 @@
 
     <section id="paymentPrompt" aria-live="polite" hidden>
         <p id="paymentMessage"></p>
-        <p>One-time payment for this PDF. No account or subscription required.</p>
+        <p>One-time payment for this PDF; no account or subscription required. Base price: €0.99 EUR. Where supported, Stripe Checkout displays the available local currency and final amount for your location before you confirm.</p>
         <button id="unlockDocumentBtn" type="button">Unlock this PDF</button>
     </section>
 </section>
@@ -186,6 +188,7 @@
         <a href="https://sackofhacks.com/terms.html">Terms</a>
         <a href="https://sackofhacks.com/privacy.html">Privacy</a>
         <a href="https://sackofhacks.com/contact.html">Contact</a>
+        <a href="https://sackofhacks.com/donate.html">Support</a>
     </nav>
     <p class="copyright">© 2026 Vovchak.io · A little toolbox for the internet.</p>
 </footer>

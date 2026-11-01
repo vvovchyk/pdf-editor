@@ -98,6 +98,8 @@ def configure_feedback(monkeypatch):
 def test_home_page(client):
     response = client.get("/")
     assert response.status_code == 200
+    assert b"Base price: \xe2\x82\xac0.99 EUR" in response.data
+    assert b"Stripe Checkout displays the available local currency" in response.data
     assert b"Editing a page rasterizes it" in response.data
     assert b"ca-pub-2211245923059324" in response.data
     assert b'data-ad-slot="4918423712"' in response.data
@@ -218,7 +220,7 @@ def test_home_page_uses_reverse_proxy_prefix(client):
 
     assert response.status_code == 200
     assert b'data-app-base="/pdf-cleaner"' in response.data
-    assert b'href="https://sackofhacks.com/static/site.css?v=14"' in response.data
+    assert b'href="https://sackofhacks.com/static/site.css?v=16"' in response.data
     assert b'href="/pdf-cleaner/static/style.css?v=12"' in response.data
     assert b'src="/pdf-cleaner/static/script.js?v=7"' in response.data
 

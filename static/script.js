@@ -49,8 +49,8 @@ function updateBilling(state) {
     if (!paymentPrompt.hidden) {
         const message = document.getElementById("paymentMessage");
         message.innerText = state.requiresPurchase
-            ? `This document exceeds the free limit of ${state.freePageLimit} pages or 25 MB. Unlock it for ${state.price} to continue.`
-            : `Unlock this document for ${state.price} to process more than ${state.freeBatchLimit} pages at once or use higher compression.`;
+            ? `This document exceeds the free limit of ${state.freePageLimit} pages or 25 MB. Unlock it at the base price of ${state.price} EUR to continue.`
+            : `Unlock this document at the base price of ${state.price} EUR to process more than ${state.freeBatchLimit} pages at once or use higher compression.`;
     }
 }
 
@@ -63,7 +63,7 @@ function showPaymentPrompt(message) {
     updateBilling(billingState);
     if (message) {
         document.getElementById("paymentMessage").innerText =
-            `${message} Unlock this PDF for ${billingState.price} to continue.`;
+            `${message} Unlock this PDF at the base price of ${billingState.price} EUR to continue.`;
     }
 }
 

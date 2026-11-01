@@ -92,7 +92,7 @@ redirect, and set the PDF Cleaner service's `PUBLIC_BASE_URL` to
 - Set `FLASK_SECRET_KEY` to a stable secret in production. `PAGE_STORE_PATH` can override the database path.
 - Uploads are limited to 200 MB and 100 pages. At the 1-pixel-per-point preview scale, a page may contain at most 20 million pixels and a document at most 100 million pixels; larger PDFs are rejected before page rendering.
 - Mixed page sizes are detected after upload. Users can align pages to the most common size or keep the original sizes; alignment preserves portrait/landscape orientation, fits and centers content without cropping.
-- Payment controls remain disabled unless `PAYMENTS_ENABLED=true` and Stripe API, webhook, and HTTPS public URL settings are configured. Checkout uses a fixed inline price of €0.99 per PDF.
+- Payment controls remain disabled unless `PAYMENTS_ENABLED=true` and Stripe API, webhook, and HTTPS public URL settings are configured. Checkout uses a base price of €0.99 EUR per PDF. Where supported, Stripe Adaptive Pricing displays the available local currency and final amount at Checkout before the customer confirms.
 - A responsive Google AdSense display unit is shown in the editor sidebar after AdSense serves it. The publisher consent message must be configured and published in AdSense; ads may not appear until site/ad-unit review and consent settings are effective.
 - Unchanged pages retain their original PDF content. Edited pages are exported as JPEG images, so their text/vector content is rasterized; the editor displays this warning before editing.
 - Multiple workers on one host can share the SQLite database. Multiple app instances need a shared database and storage location.
@@ -103,8 +103,11 @@ install Chromium for browser tests with `python -m playwright install chromium`,
 then run the test suite with `python -m pytest -q`.
 
 ## One-time payments
-Create and verify a Stripe account. The application creates a fixed one-time
-EUR €0.99 Checkout line item for unlocking one PDF. Add these server environment
+Create and verify a Stripe account. The application creates a one-time
+€0.99 EUR base-price Checkout line item for unlocking one PDF. Where supported,
+Stripe Adaptive Pricing displays the available local currency and final amount
+before the customer confirms. Enable Adaptive Pricing in Stripe Dashboard
+separately for Test mode and Live mode. Add these server environment
 variables: `PAYMENTS_ENABLED=true`, `STRIPE_SECRET_KEY`,
 `STRIPE_WEBHOOK_SECRET`, and
 `PUBLIC_BASE_URL` to the public editor URL, such as

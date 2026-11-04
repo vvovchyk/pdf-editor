@@ -21,6 +21,7 @@ def browser():
 
 @pytest.fixture
 def app_url(tmp_path, monkeypatch):
+    monkeypatch.setitem(app_module.app.config, "SESSION_COOKIE_SECURE", False)
     monkeypatch.setattr(
         app_module,
         "PAGE_STORE",

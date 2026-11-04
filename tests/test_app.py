@@ -13,6 +13,7 @@ from services.page_store import PageStore
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     app.testing = True
+    monkeypatch.setitem(app.config, "SESSION_COOKIE_SECURE", False)
     monkeypatch.setattr(
         app_module,
         "PAGE_STORE",
@@ -109,6 +110,19 @@ def test_home_page(client):
     assert b"https://sackofhacks.com/logo-prep/" in response.data
     assert b"https://sackofhacks.com/converter/image/" in response.data
     assert b"https://vovchak.io/" not in response.data
+
+
+def test_session_cookie_uses_secure_attributes(client, monkeypatch):
+    monkeypatch.setitem(app.config, "SESSION_COOKIE_SECURE", True)
+    page = Image.new("RGB", (200, 300), "white")
+
+    response = load_test_pages(client, monkeypatch, [page])
+
+    assert response.status_code == 200
+    cookie = "\n".join(response.headers.getlist("Set-Cookie")).lower()
+    assert "secure" in cookie
+    assert "httponly" in cookie
+    assert "samesite=lax" in cookie
 
 
 def test_feedback_sends_email_to_configured_mailbox(client, monkeypatch):

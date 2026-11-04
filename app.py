@@ -53,6 +53,9 @@ ENHANCEMENT_RANGES = {
 
 app = Flask(__name__)
 app.wsgi_app = ProxyFix(app.wsgi_app, x_prefix=1)
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_HTTPONLY"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
 app.config['MAX_CONTENT_LENGTH'] = 200 * 1024 * 1024  # 200 MB
 app.config["MAX_PDF_PAGES"] = MAX_PDF_PAGES
 app.config["MAX_PAGE_PIXELS"] = MAX_PAGE_PIXELS

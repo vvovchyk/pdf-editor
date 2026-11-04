@@ -70,6 +70,22 @@ def load_pdf(page, app_url, content=None, page_count=1):
     expect(page.locator("#pageInfo")).to_contain_text(f"Page 1 / {page_count}")
 
 
+def test_editor_page_loads_shared_language_catalogs():
+    response = app_module.app.test_client().get("/")
+    html = response.get_data(as_text=True)
+    script_urls = [
+        "https://sackofhacks.com/static/es.js",
+        "https://sackofhacks.com/static/it.js",
+        "https://sackofhacks.com/static/pl.js",
+        "https://sackofhacks.com/static/nb.js",
+        "https://sackofhacks.com/static/i18n.js",
+    ]
+
+    assert response.status_code == 200
+    positions = [html.index(url) for url in script_urls]
+    assert positions == sorted(positions)
+
+
 def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
     page = browser.new_page(viewport={"width": 1280, "height": 900})
     load_pdf(page, app_url)

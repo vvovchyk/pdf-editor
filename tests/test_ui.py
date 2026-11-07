@@ -1,6 +1,8 @@
 import io
 import json
+import re
 import threading
+from pathlib import Path
 
 import pymupdf
 import pytest
@@ -84,6 +86,19 @@ def test_editor_page_loads_shared_language_catalogs():
     assert response.status_code == 200
     positions = [html.index(url) for url in script_urls]
     assert positions == sorted(positions)
+
+
+def test_header_navigation_uses_the_shared_compact_links():
+    page = (Path(__file__).resolve().parents[1] / "templates/index.html").read_text(
+        encoding="utf-8"
+    )
+    navigation = page.split('<nav class="top-links"', 1)[1].split("</nav>", 1)[0]
+
+    assert re.findall(r'href="([^"]+)"', navigation) == [
+        "https://sackofhacks.com/",
+        "https://sackofhacks.com/donate.html",
+        "https://sackofhacks.com/contact.html",
+    ]
 
 
 def test_area_selection_is_visible_and_can_be_cleared(browser, app_url):
